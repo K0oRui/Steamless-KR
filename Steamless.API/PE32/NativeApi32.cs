@@ -606,14 +606,5 @@ namespace Steamless.API.PE32
             public uint Characteristics;
         }
 
-        /// <summary>
-        /// imagehlp!MapFileAndChecksum
-        /// </summary>
-        /// <param name="Filename"></param>
-        /// <param name="HeaderSum"></param>
-        /// <param name="CheckSum"></param>
-        /// <returns></returns>
-        [DllImport("imagehlp.dll", CharSet = CharSet.Auto)]
-        public static extern int MapFileAndCheckSum(string Filename, out uint HeaderSum, out uint CheckSum);
     }
 }

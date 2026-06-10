@@ -23,7 +23,7 @@
  * No warranties are given.
  */
 
-namespace Steamless.API.Model
+namespace Steamless.Model
 {
     using System;
 

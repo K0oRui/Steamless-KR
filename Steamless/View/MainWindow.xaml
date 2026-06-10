@@ -27,7 +27,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:i="http://schemas.microsoft.com/expression/2010/interactivity"
+        xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
         xmlns:view="clr-namespace:Steamless.View"
         mc:Ignorable="d" FontFamily="Tahoma" Icon="../Assets/steam.ico"
         Title="Steamless" MinHeight="600" MaxHeight="800" MinWidth="450" Width="525" SizeToContent="Height"

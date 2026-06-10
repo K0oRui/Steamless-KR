@@ -27,8 +27,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:i="http://schemas.microsoft.com/expression/2010/interactivity"
-             xmlns:command="clr-namespace:GalaSoft.MvvmLight.Command;assembly=GalaSoft.MvvmLight.Extras"
+             xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
              mc:Ignorable="d" d:DesignHeight="600" d:DesignWidth="450">
 
     <!-- Main Content -->
@@ -51,13 +50,13 @@
                 <TextBox Grid.Column="0" Margin="2" HorizontalContentAlignment="Left" VerticalContentAlignment="Center" IsEnabled="True" IsReadOnly="False" AllowDrop="True" Text="{Binding MainWindow.InputFilePath, Source={StaticResource ViewModelLocator}}">
                     <i:Interaction.Triggers>
                         <i:EventTrigger EventName="Drop">
-                            <command:EventToCommand Command="{Binding OnDragDropCommand}" PassEventArgsToCommand="True" />
+                            <i:InvokeCommandAction Command="{Binding OnDragDropCommand}" PassEventArgsToCommand="True" />
                         </i:EventTrigger>
                         <i:EventTrigger EventName="PreviewDragOver">
-                            <command:EventToCommand Command="{Binding OnPreviewDragEnterCommand}" PassEventArgsToCommand="True" />
+                            <i:InvokeCommandAction Command="{Binding OnPreviewDragEnterCommand}" PassEventArgsToCommand="True" />
                         </i:EventTrigger>
                         <i:EventTrigger EventName="PreviewDragEnter">
-                            <command:EventToCommand Command="{Binding OnPreviewDragEnterCommand}" PassEventArgsToCommand="True" />
+                            <i:InvokeCommandAction Command="{Binding OnPreviewDragEnterCommand}" PassEventArgsToCommand="True" />
                         </i:EventTrigger>
                     </i:Interaction.Triggers>
                 </TextBox>

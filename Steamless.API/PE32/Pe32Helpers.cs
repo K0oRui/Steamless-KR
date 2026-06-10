@@ -91,48 +91,72 @@ namespace Steamless.API.PE32
         }
 
         /// <summary>
-        /// Updates the given files PE checksum value. (Path is assumed to be a 32bit PE file.)
+        /// Computes the PE checksum using the Fletcher-based algorithm
+        /// (identical to Windows imagehlp!MapFileAndCheckSum).
+        /// </summary>
+        /// <param name="data">Raw file bytes.</param>
+        /// <returns>The 32-bit PE checksum.</returns>
+        private static uint ComputePeChecksum(byte[] data)
+        {
+            uint checksum = 0;
+
+            for (var i = 0; i < data.Length - 1; i += 2)
+            {
+                var word = (uint)(data[i] | (data[i + 1] << 8));
+                checksum += word;
+                checksum = (checksum & 0xFFFF) + (checksum >> 16);
+            }
+
+            if ((data.Length & 1) != 0)
+            {
+                checksum += (uint)(data[data.Length - 1] << 8);
+                checksum = (checksum & 0xFFFF) + (checksum >> 16);
+            }
+
+            checksum = (checksum & 0xFFFF) + (checksum >> 16);
+            checksum = (checksum & 0xFFFF) + (checksum >> 16);
+
+            checksum += (uint)data.Length;
+
+            return checksum;
+        }
+
+        /// <summary>
+        /// Updates the given files PE checksum value.
         /// </summary>
         /// <param name="path"></param>
         /// <returns></returns>
         public static bool UpdateFileChecksum(string path)
         {
-            // Obtain the proper checksum for the file..
-            var ret = NativeApi32.MapFileAndCheckSum(path, out uint HeaderSum, out uint Checksum);
-            if (ret != 0)
-                return false;
-
-            FileStream fStream = null;
-            var data = new byte[4];
-
             try
             {
-                // Open the file for reading/writing..
-                fStream = new FileStream(path, FileMode.Open, FileAccess.ReadWrite);
+                // Read the file into memory to compute and write the new checksum..
+                var data = File.ReadAllBytes(path);
 
-                // Read the starting offset to the files NT headers..
-                fStream.Position = (int)Marshal.OffsetOf(typeof(NativeApi32.ImageDosHeader32), "e_lfanew");
-                fStream.Read(data, 0, 4);
+                // Compute the PE checksum from the raw file bytes..
+                var checksum = ComputePeChecksum(data);
 
-                var offset = BitConverter.ToUInt32(data, 0);
+                // Parse the DOS header to locate the PE signature offset..
+                var dosHeader = GetStructure<NativeApi32.ImageDosHeader32>(data, 0);
+                var sigOffset = dosHeader.e_lfanew;
 
-                // Move to the files CheckSum position..
-                offset += 4 + (uint)Marshal.SizeOf(typeof(NativeApi32.ImageFileHeader32)) + (uint)Marshal.OffsetOf(typeof(NativeApi32.ImageOptionalHeader32), "CheckSum").ToInt32();
-                fStream.Position = offset;
+                // Calculate the offset to the CheckSum field:
+                //   sigOffset + PE signature (4 bytes) + FileHeader + offset of CheckSum within OptionalHeader..
+                var checksumOffset = sigOffset + 4 +
+                    (uint)Marshal.SizeOf(typeof(NativeApi32.ImageFileHeader32)) +
+                    (uint)Marshal.OffsetOf(typeof(NativeApi32.ImageOptionalHeader32), "CheckSum").ToInt32();
 
-                // Overwrite the file checksum..
-                data = BitConverter.GetBytes(Checksum);
-                fStream.Write(data, 0, 4);
+                // Overwrite the file checksum at the correct offset..
+                var checksumBytes = BitConverter.GetBytes(checksum);
+                Buffer.BlockCopy(checksumBytes, 0, data, (int)checksumOffset, 4);
 
+                // Write the patched data back to the file..
+                File.WriteAllBytes(path, data);
                 return true;
             }
             catch
             {
                 return false;
-            }
-            finally
-            {
-                fStream?.Dispose();
             }
         }
 
