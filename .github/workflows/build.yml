@@ -1,0 +1,35 @@
+name: build
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - run: dotnet build Steamless.sln
+
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - run: dotnet build Steamless.API/Steamless.API.csproj
+      - run: dotnet build Steamless.CLI/Steamless.CLI.csproj
+      - run: dotnet build ExamplePlugin/ExamplePlugin.csproj
+      - run: dotnet build Steamless.Unpacker.Variant10.x86/Steamless.Unpacker.Variant10.x86.csproj
+      - run: dotnet build Steamless.Unpacker.Variant20.x86/Steamless.Unpacker.Variant20.x86.csproj
+      - run: dotnet build Steamless.Unpacker.Variant21.x86/Steamless.Unpacker.Variant21.x86.csproj
+      - run: dotnet build Steamless.Unpacker.Variant30.x64/Steamless.Unpacker.Variant30.x64.csproj
+      - run: dotnet build Steamless.Unpacker.Variant30.x86/Steamless.Unpacker.Variant30.x86.csproj
+      - run: dotnet build Steamless.Unpacker.Variant31.x64/Steamless.Unpacker.Variant31.x64.csproj
+      - run: dotnet build Steamless.Unpacker.Variant31.x86/Steamless.Unpacker.Variant31.x86.csproj
