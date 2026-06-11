@@ -47,20 +47,20 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <TextBox Grid.Column="0" Margin="2" HorizontalContentAlignment="Left" VerticalContentAlignment="Center" IsEnabled="True" IsReadOnly="False" AllowDrop="True" Text="{Binding MainWindow.InputFilePath, Source={StaticResource ViewModelLocator}}">
+                <TextBox Grid.Column="0" Margin="2" HorizontalContentAlignment="Left" VerticalContentAlignment="Center" IsEnabled="True" IsReadOnly="False" AllowDrop="True" Text="{Binding InputFilePath}">
                     <i:Interaction.Triggers>
                         <i:EventTrigger EventName="Drop">
-                            <i:InvokeCommandAction Command="{Binding OnDragDropCommand}" PassEventArgsToCommand="True" />
+                            <i:InvokeCommandAction Command="{Binding DragDropCommand}" PassEventArgsToCommand="True" />
                         </i:EventTrigger>
                         <i:EventTrigger EventName="PreviewDragOver">
-                            <i:InvokeCommandAction Command="{Binding OnPreviewDragEnterCommand}" PassEventArgsToCommand="True" />
+                            <i:InvokeCommandAction Command="{Binding PreviewDragEnterCommand}" PassEventArgsToCommand="True" />
                         </i:EventTrigger>
                         <i:EventTrigger EventName="PreviewDragEnter">
-                            <i:InvokeCommandAction Command="{Binding OnPreviewDragEnterCommand}" PassEventArgsToCommand="True" />
+                            <i:InvokeCommandAction Command="{Binding PreviewDragEnterCommand}" PassEventArgsToCommand="True" />
                         </i:EventTrigger>
                     </i:Interaction.Triggers>
                 </TextBox>
-                <Button Grid.Column="1" Content="..." Foreground="Black" Width="40" Margin="2" Command="{Binding MainWindow.OnBrowseForInputFileCommand, Source={StaticResource ViewModelLocator}}" />
+                <Button Grid.Column="1" Content="..." Foreground="Black" Width="40" Margin="2" Command="{Binding BrowseForInputFileCommand}" />
             </Grid>
         </GroupBox>
 
@@ -70,12 +70,12 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
-                <ComboBox Grid.Row="0" SelectedIndex="{Binding MainWindow.SelectedPluginIndex, Source={StaticResource ViewModelLocator}}" ItemsSource="{Binding MainWindow.Plugins, Source={StaticResource ViewModelLocator}}" DisplayMemberPath="DisplayName" Margin="2" />
+                <ComboBox Grid.Row="0" SelectedIndex="{Binding SelectedPluginIndex}" ItemsSource="{Binding Plugins}" DisplayMemberPath="DisplayName" Margin="2" />
             </Grid>
         </GroupBox>
 
         <!-- Unpacking Options -->
-        <GroupBox Grid.Row="2" Margin="10,0,10,10" Header="3. Unpacking Options" DataContext="{Binding MainWindow, Source={StaticResource ViewModelLocator}}">
+        <GroupBox Grid.Row="2" Margin="10,0,10,10" Header="3. Unpacking Options">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -130,19 +130,19 @@
                             </Hyperlink.TextDecorations>
                             <i:Interaction.Triggers>
                                 <i:EventTrigger EventName="RequestNavigate">
-                                    <i:InvokeCommandAction Command="{Binding Path=MainWindow.OnClearLogCommand, Source={StaticResource ViewModelLocator}}" />
+                                    <i:InvokeCommandAction Command="{Binding ClearLogCommand}" />
                                 </i:EventTrigger>
                             </i:Interaction.Triggers>
                         </Hyperlink>
                     </Label>
                 </Grid>
             </GroupBox.Header>
-            <ListView ItemsSource="{Binding MainWindow.Log, Source={StaticResource ViewModelLocator}}" Style="{DynamicResource LogListView}" />
+            <ListView ItemsSource="{Binding Log}" Style="{DynamicResource LogListView}" />
         </GroupBox>
 
         <!-- Unpack Button -->
         <Grid Grid.Row="4" Margin="8" Background="Transparent" SnapsToDevicePixels="True">
-            <Button Content="Unpack File" Width="125" Margin="2" HorizontalAlignment="Center" VerticalAlignment="Center" Command="{Binding MainWindow.OnUnpackFileCommand, Source={StaticResource ViewModelLocator}}" />
+            <Button Content="Unpack File" Width="125" Margin="2" HorizontalAlignment="Center" VerticalAlignment="Center" Command="{Binding UnpackFileCommand}" />
         </Grid>
     </Grid>
 </UserControl>

@@ -108,6 +108,19 @@ namespace Steamless.API.Model
         }
 
         /// <summary>
+        /// Sibling-aware entry point. Default delegates to the 2-arg version.
+        /// Override this to access the full plugin list for dispatch decisions.
+        /// </summary>
+        /// <param name="file"></param>
+        /// <param name="options"></param>
+        /// <param name="siblings"></param>
+        /// <returns></returns>
+        public virtual bool ProcessFile(string file, SteamlessOptions options, System.Collections.Generic.IEnumerable<SteamlessPlugin> siblings)
+        {
+            return this.ProcessFile(file, options);
+        }
+
+        /// <summary>
         /// Returns a string that represents the current object.
         /// </summary>
         /// <returns>

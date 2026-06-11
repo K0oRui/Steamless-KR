@@ -25,8 +25,23 @@
 
 namespace Steamless.API.Model
 {
-    public class SteamlessOptions : NotifiableModel
+    using CommunityToolkit.Mvvm.ComponentModel;
+
+    /// <summary>
+    /// Steamless processing options. Properties are source-generated from fields
+    /// via CommunityToolkit.Mvvm [ObservableProperty] attribute.
+    /// </summary>
+    public partial class SteamlessOptions : ObservableObject
     {
+        [ObservableProperty] private bool _verboseOutput;
+        [ObservableProperty] private bool _keepBindSection;
+        [ObservableProperty] private bool _dumpPayloadToDisk;
+        [ObservableProperty] private bool _dumpSteamDrmpToDisk;
+        [ObservableProperty] private bool _useExperimentalFeatures;
+        [ObservableProperty] private bool _dontRealignSections;
+        [ObservableProperty] private bool _zeroDosStubData;
+        [ObservableProperty] private bool _recalculateFileChecksum;
+
         /// <summary>
         /// Default Constructor
         /// </summary>
@@ -40,78 +55,6 @@ namespace Steamless.API.Model
             this.DontRealignSections = true;
             this.ZeroDosStubData = true;
             this.RecalculateFileChecksum = false;
-        }
-
-        /// <summary>
-        /// Gets or sets the verbose output option value.
-        /// </summary>
-        public bool VerboseOutput
-        {
-            get => this.Get<bool>("VerboseOutput");
-            set => this.Set("VerboseOutput", value);
-        }
-
-        /// <summary>
-        /// Gets or sets the keep bind section option value.
-        /// </summary>
-        public bool KeepBindSection
-        {
-            get => this.Get<bool>("KeepBindSection");
-            set => this.Set("KeepBindSection", value);
-        }
-
-        /// <summary>
-        /// Gets or sets the dump payload to disk option value.
-        /// </summary>
-        public bool DumpPayloadToDisk
-        {
-            get => this.Get<bool>("DumpPayloadToDisk");
-            set => this.Set("DumpPayloadToDisk", value);
-        }
-
-        /// <summary>
-        /// Gets or sets the dump SteamDRMP.dll to disk option value.
-        /// </summary>
-        public bool DumpSteamDrmpToDisk
-        {
-            get => this.Get<bool>("DumpSteamDrmpToDisk");
-            set => this.Set("DumpSteamDrmpToDisk", value);
-        }
-
-        /// <summary>
-        /// Gets or sets the use experimental features option value.
-        /// </summary>
-        public bool UseExperimentalFeatures
-        {
-            get => this.Get<bool>("UseExperimentalFeatures");
-            set => this.Set("UseExperimentalFeatures", value);
-        }
-
-        /// <summary>
-        /// Gets or sets the don't realign sections option value.
-        /// </summary>
-        public bool DontRealignSections
-        {
-            get => this.Get<bool>("DontRealignSections");
-            set => this.Set("DontRealignSections", value);
-        }
-
-        /// <summary>
-        /// Gets or sets if the DOS stub data should be zeroed.
-        /// </summary>
-        public bool ZeroDosStubData
-        {
-            get => this.Get<bool>("ZeroDosStubData");
-            set => this.Set("ZeroDosStubData", value);
-        }
-
-        /// <summary>
-        /// Gets or sets if the file checksum should be recalculated.
-        /// </summary>
-        public bool RecalculateFileChecksum
-        {
-            get => this.Get<bool>("RecalculateFileChecksum");
-            set => this.Set("RecalculateFileChecksum", value);
         }
     }
 }

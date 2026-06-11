@@ -26,10 +26,16 @@
 namespace Steamless.Model.Tasks
 {
     using API.Model;
+    using CommunityToolkit.Mvvm.ComponentModel;
     using System.Threading.Tasks;
 
-    public abstract class BaseTask : NotifiableModel
+    public abstract partial class BaseTask : ObservableObject
     {
+        [ObservableProperty] private bool _completed;
+        [ObservableProperty] private double _progress;
+        [ObservableProperty] private double _progressTotal;
+        [ObservableProperty] private string _text;
+
         /// <summary>
         /// Starts the task.
         /// </summary>
@@ -47,41 +53,5 @@ namespace Steamless.Model.Tasks
         /// The tasks main function to execute when started.
         /// </summary>
         public abstract Task DoTask();
-
-        /// <summary>
-        /// Gets or sets the tasks completed state.
-        /// </summary>
-        public bool Completed
-        {
-            get => this.Get<bool>("Completed");
-            set => this.Set("Completed", value);
-        }
-
-        /// <summary>
-        /// Gets or sets the tasks progress.
-        /// </summary>
-        public double Progress
-        {
-            get => this.Get<double>("Progress");
-            set => this.Set("Progress", value);
-        }
-
-        /// <summary>
-        /// Gets or sets the tasks total progress.
-        /// </summary>
-        public double ProgressTotal
-        {
-            get => this.Get<double>("ProgressTotal");
-            set => this.Set("ProgressTotal", value);
-        }
-
-        /// <summary>
-        /// Gets or sets the text to display for this task.
-        /// </summary>
-        public string Text
-        {
-            get => this.Get<string>("Text");
-            set => this.Set("Text", value);
-        }
     }
 }

@@ -35,7 +35,7 @@
         AllowsTransparency="True" WindowStartupLocation="CenterScreen" WindowStyle="None">
 
     <!-- Main Content -->
-    <Border x:Name="LayoutRoot" ClipToBounds="True" DataContext="{Binding MainWindow, Source={StaticResource ViewModelLocator}}" Margin="0"
+    <Border x:Name="LayoutRoot" ClipToBounds="True" Margin="0"
             BorderBrush="#193754" BorderThickness="1">
         <Border.Background>
             <LinearGradientBrush StartPoint=".5,0" EndPoint=".5,1">
@@ -47,7 +47,7 @@
         <!-- Mouse Down Event Handler -->
         <i:Interaction.Triggers>
             <i:EventTrigger EventName="MouseLeftButtonDown">
-                <i:InvokeCommandAction Command="{Binding OnWindowMouseDownCommand}" />
+                <i:InvokeCommandAction Command="{Binding WindowMouseDownCommand}" />
             </i:EventTrigger>
         </i:Interaction.Triggers>
 
@@ -163,14 +163,14 @@
                         <ColumnDefinition />
                         <ColumnDefinition />
                     </Grid.ColumnDefinitions>
-                    <Button Grid.Column="0" Style="{StaticResource WindowNavigationButton}" Padding="0" Width="24" Height="24" ToolTip="About Steamless" Visibility="Visible" Command="{Binding OnShowAboutViewCommand}">
+                    <Button Grid.Column="0" Style="{StaticResource WindowNavigationButton}" Padding="0" Width="24" Height="24" ToolTip="About Steamless" Visibility="Visible" Command="{Binding ToggleAboutViewCommand}">
                         <Path Width="7" Stretch="Uniform" Data="F1 M 23.5,31C 24.8807,31 26,32.1193 26,33.5C 26,34.8807 24.8807,36 23.5,36C 22.1193,36 21,34.8807 21,33.5C 21,32.1193 22.1193,31 23.5,31 Z M 24,11C 28.4183,11 32,13.8579 32,18C 32,19.5 31,22 29,23C 27,24 26,25.3431 26,27L 26,29L 21,29L 21,27.5C 21,24.0992 24,22 25,21C 27,19 27,18.7226 27,18C 27,16.3432 25.6568,15 24,15C 22.3431,15 21,16.3432 21,18L 21,19.5L 16,19.5L 16,18.5C 16,14.3579 19.5817,11 24,11 Z" SnapsToDevicePixels="True" Fill="White" />
                     </Button>
                     <Border Grid.Column="1" BorderBrush="#8E8F96" BorderThickness="1,0,0,0" Margin="5,6,5,6" />
-                    <Button Grid.Column="2" Style="{StaticResource WindowNavigationButton}" Padding="0" Width="24" Height="24" ToolTip="Minimize" Visibility="Visible" Command="{Binding OnWindowMinimizeCommand}">
+                    <Button Grid.Column="2" Style="{StaticResource WindowNavigationButton}" Padding="0" Width="24" Height="24" ToolTip="Minimize" Visibility="Visible" Command="{Binding WindowMinimizeCommand}">
                         <Path Data="F1 M0,0 L0,2 10,2 10,0z" SnapsToDevicePixels="True" Fill="White" />
                     </Button>
-                    <Button Grid.Column="3" Padding="0" Width="24" Height="24" ToolTip="Close" Visibility="Visible" Command="{Binding OnWindowCloseCommand}">
+                    <Button Grid.Column="3" Padding="0" Width="24" Height="24" ToolTip="Close" Visibility="Visible" Command="{Binding WindowCloseCommand}">
                         <Button.Style>
                             <Style BasedOn="{StaticResource WindowNavigationButton}" TargetType="{x:Type Button}">
                                 <Style.Triggers>

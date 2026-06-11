@@ -56,7 +56,7 @@
                     <DropShadowEffect Color="#80000000" BlurRadius="5" ShadowDepth="1" RenderOptions.EdgeMode="Aliased" />
                 </Label.Effect>
             </Label>
-            <TextBlock Foreground="#F7F7F7" HorizontalAlignment="Center" VerticalAlignment="Center" Text="{Binding MainWindow.SteamlessVersion, Source={StaticResource ViewModelLocator}, FallbackValue='0.0.0.0', StringFormat={}Version: {0}}" />
+            <TextBlock Foreground="#F7F7F7" HorizontalAlignment="Center" VerticalAlignment="Center" Text="{Binding SteamlessVersion, FallbackValue='0.0.0.0', StringFormat={}Version: {0}}" />
         </StackPanel>
 
         <!-- Project Links -->
@@ -93,7 +93,7 @@
                             </Hyperlink.TextDecorations>
                             <i:Interaction.Triggers>
                                 <i:EventTrigger EventName="RequestNavigate">
-                                    <i:InvokeCommandAction Command="{Binding Path=MainWindow.OnOpenHyperlinkCommand, Source={StaticResource ViewModelLocator}}" CommandParameter="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type Hyperlink}}}" />
+                                    <i:InvokeCommandAction Command="{Binding OpenHyperlinkCommand}" CommandParameter="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type Hyperlink}}}" />
                                 </i:EventTrigger>
                             </i:Interaction.Triggers>
                         </Hyperlink>
@@ -130,7 +130,7 @@
                             </Hyperlink.TextDecorations>
                             <i:Interaction.Triggers>
                                 <i:EventTrigger EventName="RequestNavigate">
-                                    <i:InvokeCommandAction Command="{Binding Path=MainWindow.OnOpenHyperlinkCommand, Source={StaticResource ViewModelLocator}}" CommandParameter="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type Hyperlink}}}" />
+                                    <i:InvokeCommandAction Command="{Binding OpenHyperlinkCommand}" CommandParameter="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type Hyperlink}}}" />
                                 </i:EventTrigger>
                             </i:Interaction.Triggers>
                         </Hyperlink>
@@ -167,7 +167,7 @@
                             </Hyperlink.TextDecorations>
                             <i:Interaction.Triggers>
                                 <i:EventTrigger EventName="RequestNavigate">
-                                    <i:InvokeCommandAction Command="{Binding Path=MainWindow.OnOpenHyperlinkCommand, Source={StaticResource ViewModelLocator}}" CommandParameter="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type Hyperlink}}}" />
+                                    <i:InvokeCommandAction Command="{Binding OpenHyperlinkCommand}" CommandParameter="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type Hyperlink}}}" />
                                 </i:EventTrigger>
                             </i:Interaction.Triggers>
                         </Hyperlink>
@@ -195,7 +195,7 @@
                         <Hyperlink NavigateUri="https://www.paypal.me/atom0s" Foreground="Transparent" FontSize="24">&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;
                             <i:Interaction.Triggers>
                                 <i:EventTrigger EventName="RequestNavigate">
-                                    <i:InvokeCommandAction Command="{Binding Path=MainWindow.OnOpenHyperlinkCommand, Source={StaticResource ViewModelLocator}}" CommandParameter="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type Hyperlink}}}" />
+                                    <i:InvokeCommandAction Command="{Binding OpenHyperlinkCommand}" CommandParameter="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type Hyperlink}}}" />
                                 </i:EventTrigger>
                             </i:Interaction.Triggers>
                         </Hyperlink>
@@ -204,7 +204,7 @@
                         <Hyperlink NavigateUri="https://www.paypal.me/atom0s" Foreground="#c0dd65" >Donate via Paypal
                             <i:Interaction.Triggers>
                                 <i:EventTrigger EventName="RequestNavigate">
-                                    <i:InvokeCommandAction Command="{Binding Path=MainWindow.OnOpenHyperlinkCommand, Source={StaticResource ViewModelLocator}}" CommandParameter="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type Hyperlink}}}" />
+                                    <i:InvokeCommandAction Command="{Binding OpenHyperlinkCommand}" CommandParameter="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type Hyperlink}}}" />
                                 </i:EventTrigger>
                             </i:Interaction.Triggers>
                         </Hyperlink>
@@ -223,7 +223,7 @@
                         <Hyperlink NavigateUri="https://github.com/sponsors/atom0s" Foreground="Transparent" FontSize="24">&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;
                             <i:Interaction.Triggers>
                                 <i:EventTrigger EventName="RequestNavigate">
-                                    <i:InvokeCommandAction Command="{Binding Path=MainWindow.OnOpenHyperlinkCommand, Source={StaticResource ViewModelLocator}}" CommandParameter="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type Hyperlink}}}" />
+                                    <i:InvokeCommandAction Command="{Binding OpenHyperlinkCommand}" CommandParameter="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type Hyperlink}}}" />
                                 </i:EventTrigger>
                             </i:Interaction.Triggers>
                         </Hyperlink>
@@ -232,7 +232,7 @@
                         <Hyperlink NavigateUri="https://github.com/sponsors/atom0s" Foreground="#c0dd65" >Sponsor via GitHub
                             <i:Interaction.Triggers>
                                 <i:EventTrigger EventName="RequestNavigate">
-                                    <i:InvokeCommandAction Command="{Binding Path=MainWindow.OnOpenHyperlinkCommand, Source={StaticResource ViewModelLocator}}" CommandParameter="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type Hyperlink}}}" />
+                                    <i:InvokeCommandAction Command="{Binding OpenHyperlinkCommand}" CommandParameter="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type Hyperlink}}}" />
                                 </i:EventTrigger>
                             </i:Interaction.Triggers>
                         </Hyperlink>
@@ -251,7 +251,7 @@
                         <Hyperlink NavigateUri="https://www.patreon.com/atom0s" Foreground="Transparent" FontSize="24">&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;
                             <i:Interaction.Triggers>
                                 <i:EventTrigger EventName="RequestNavigate">
-                                    <i:InvokeCommandAction Command="{Binding Path=MainWindow.OnOpenHyperlinkCommand, Source={StaticResource ViewModelLocator}}" CommandParameter="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type Hyperlink}}}" />
+                                    <i:InvokeCommandAction Command="{Binding OpenHyperlinkCommand}" CommandParameter="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type Hyperlink}}}" />
                                 </i:EventTrigger>
                             </i:Interaction.Triggers>
                         </Hyperlink>
@@ -260,7 +260,7 @@
                         <Hyperlink NavigateUri="https://www.patreon.com/atom0s" Foreground="#c0dd65" >Sponsor via Patreon
                             <i:Interaction.Triggers>
                                 <i:EventTrigger EventName="RequestNavigate">
-                                    <i:InvokeCommandAction Command="{Binding Path=MainWindow.OnOpenHyperlinkCommand, Source={StaticResource ViewModelLocator}}" CommandParameter="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type Hyperlink}}}" />
+                                    <i:InvokeCommandAction Command="{Binding OpenHyperlinkCommand}" CommandParameter="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type Hyperlink}}}" />
                                 </i:EventTrigger>
                             </i:Interaction.Triggers>
                         </Hyperlink>
@@ -292,8 +292,8 @@
                     <Style BasedOn="{StaticResource StackPanelLabelCenter}" TargetType="{x:Type Label}" />
                 </StackPanel.Resources>
                 <Label Content="External Library Credits" FontSize="18" FontWeight="Bold" />
-                <Label Content="GalaSoft Mvvm Light Toolkit" />
-                <Label Content="Mahapps.Metro &amp; Newtonsoft Json" />
+                <Label Content="CommunityToolkit.Mvvm" />
+                <Label Content="Microsoft.Extensions.DependencyInjection" />
                 <Label Content="Oren Nachman, Massimo Savazzi, Templarian - XAML Icons" />
             </StackPanel>
         </StackPanel>
@@ -363,6 +363,6 @@
         </Border>
 
         <!-- Close Button -->
-        <Button Grid.Row="5" Content="Close" Width="125" Margin="4" HorizontalAlignment="Center" VerticalAlignment="Center" Command="{Binding MainWindow.OnShowAboutViewCommand, Source={StaticResource ViewModelLocator}}" />
+        <Button Grid.Row="5" Content="Close" Width="125" Margin="4" HorizontalAlignment="Center" VerticalAlignment="Center" Command="{Binding ToggleAboutViewCommand}" />
     </Grid>
 </UserControl>

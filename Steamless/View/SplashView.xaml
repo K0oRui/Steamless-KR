@@ -64,7 +64,7 @@
             </Border>
 
             <!-- Task Information -->
-            <Grid DataContext="{Binding MainWindow.CurrentTask, Source={StaticResource ViewModelLocator}}" VerticalAlignment="Top" Margin="0,5,0,0">
+            <Grid DataContext="{Binding CurrentTask}" VerticalAlignment="Top" Margin="0,5,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
@@ -131,7 +131,7 @@
         <Grid Background="#40000000" VerticalAlignment="Bottom">
             <StackPanel HorizontalAlignment="Left" Margin="5">
                 <TextBlock Foreground="#F7F7F7" FontFamily="Courier New" FontWeight="Bold"
-                           Text="{Binding MainWindow.SteamlessVersion, Source={StaticResource ViewModelLocator}, FallbackValue='0.0.0.0', StringFormat={}Steamless Version: {0}}"
+                           Text="{Binding SteamlessVersion, FallbackValue='0.0.0.0', StringFormat={}Steamless Version: {0}}"
                            />
             </StackPanel>
         </Grid>

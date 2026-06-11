@@ -26,15 +26,14 @@
 namespace Steamless.Model
 {
     using API;
+    using API.Events;
     using API.Model;
     using API.PE32;
     using API.PE64;
     using API.Services;
-    using Steamless.API.Events;
     using System;
+    using System.Collections.Generic;
     using System.Linq;
-    using System.Windows;
-    using ViewModel;
 
     [SteamlessApiVersion(1, 0)]
     internal class AutomaticPlugin : SteamlessPlugin
@@ -97,27 +96,35 @@ namespace Steamless.Model
         }
 
         /// <summary>
-        /// Processing function called to allow the plugin to process the file.
+        /// Sibling-aware dispatch. Try each sibling plugin (excluding ourselves),
+        /// fall back to local PE file-format probe if no sibling claims the file.
         /// </summary>
         /// <param name="file"></param>
         /// <param name="options"></param>
+        /// <param name="siblings"></param>
         /// <returns></returns>
-        public override bool ProcessFile(string file, SteamlessOptions options)
+        public override bool ProcessFile(string file, SteamlessOptions options, IEnumerable<SteamlessPlugin> siblings)
         {
-            // Obtain the view model locator..
-            var vml = Application.Current.FindResource("ViewModelLocator") as ViewModelLocator;
-
-            // Obtain the plugins..
-            var plugins = vml?.MainWindow.Plugins;
-            if (plugins == null || plugins.Count == 0)
-                return false;
-
-            // Query the plugin list for a plugin to process the file..
-            var ret = (from p in plugins where p != this where p.CanProcessFile(file) select p.ProcessFile(file, options)).FirstOrDefault();
+            // Try each sibling plugin that can handle the file..
+            var ret = siblings.Where(p => p != this)
+                              .Where(p => p.CanProcessFile(file))
+                              .Select(p => p.ProcessFile(file, options,
+                                                         siblings.Where(x => x != p)))
+                              .FirstOrDefault();
             if (ret)
-                return ret;
+                return true;
 
-            // Determine if the file was not packed with SteamStub..
+            return this.ProbeFile(file);
+        }
+
+        /// <summary>
+        /// Probes the given file to determine if it is a valid PE file packed with
+        /// SteamStub. Returns true if unpacking is possible, false otherwise.
+        /// </summary>
+        /// <param name="file"></param>
+        /// <returns></returns>
+        private bool ProbeFile(string file)
+        {
             try
             {
                 // First attempt to read the file as 32bit..

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Steamless - Copyright (c) 2015 - 2024 atom0s [atom0s@live.com]
  *
  * This work is licensed under the Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License.
@@ -28,7 +28,8 @@ namespace Steamless.ViewModel
     using API.Events;
     using API.Model;
     using API.Services;
-    using GalaSoft.MvvmLight.Command;
+    using CommunityToolkit.Mvvm.ComponentModel;
+    using CommunityToolkit.Mvvm.Input;
     using Microsoft.Win32;
     using Model;
     using Model.Tasks;
@@ -37,13 +38,14 @@ namespace Steamless.ViewModel
     using System.Collections.ObjectModel;
     using System.Diagnostics;
     using System.IO;
+    using System.Linq;
     using System.Threading;
     using System.Threading.Tasks;
     using System.Windows;
     using System.Windows.Documents;
     using System.Windows.Input;
 
-    public class MainWindowViewModel : ViewModelBase
+    public partial class MainWindowViewModel : ObservableObject
     {
         /// <summary>
         /// Internal data service instance.
@@ -51,9 +53,25 @@ namespace Steamless.ViewModel
         private readonly IDataService m_DataService;
 
         /// <summary>
+        /// Internal logging service instance.
+        /// </summary>
+        private readonly LoggingService m_LoggingService;
+
+        /// <summary>
         /// Internal thread used to process tasks.
         /// </summary>
         private Thread m_TaskThread;
+
+        [ObservableProperty] private ApplicationState _state;
+        [ObservableProperty] private Version _steamlessVersion;
+        [ObservableProperty] private BaseTask _currentTask;
+        [ObservableProperty] private ConcurrentBag<BaseTask> _tasks;
+        [ObservableProperty] private bool _showAboutView;
+        [ObservableProperty] private ObservableCollection<SteamlessPlugin> _plugins;
+        [ObservableProperty] private int _selectedPluginIndex;
+        [ObservableProperty] private string _inputFilePath;
+        [ObservableProperty] private SteamlessOptions _options;
+        [ObservableProperty] private ObservableCollection<LogMessageEventArgs> _log;
 
         /// <summary>
         /// Default Constructor
@@ -64,6 +82,7 @@ namespace Steamless.ViewModel
         {
             // Store the data service instance..
             this.m_DataService = dataService;
+            this.m_LoggingService = logService;
 
             // Initialize the model..
             this.State = ApplicationState.Initializing;
@@ -72,22 +91,6 @@ namespace Steamless.ViewModel
             this.Log = new ObservableCollection<LogMessageEventArgs>();
             this.ShowAboutView = false;
             this.InputFilePath = string.Empty;
-
-            // Register command callbacks..
-            this.OnWindowCloseCommand = new RelayCommand(this.WindowClose);
-            this.OnWindowMinimizeCommand = new RelayCommand(WindowMinimize);
-            this.OnWindowMouseDownCommand = new RelayCommand<MouseButtonEventArgs>(WindowMouseDown);
-            this.OnShowAboutViewCommand = new RelayCommand(() => this.ShowAboutView = !this.ShowAboutView);
-            this.OnOpenHyperlinkCommand = new RelayCommand<object>(o =>
-            {
-                if (o is Hyperlink link)
-                    Process.Start(link.NavigateUri.AbsoluteUri);
-            });
-            this.OnDragDropCommand = new RelayCommand<DragEventArgs>(this.InputFileDragDrop);
-            this.OnPreviewDragEnterCommand = new RelayCommand<DragEventArgs>(this.InputFilePreviewDragEnter);
-            this.OnBrowseForInputFileCommand = new RelayCommand(this.BrowseForInputFile);
-            this.OnUnpackFileCommand = new RelayCommand(this.UnpackFile);
-            this.OnClearLogCommand = new RelayCommand(() => this.ClearLogMessages(this, EventArgs.Empty));
 
             // Attach logging service events..
             logService.AddLogMessage += this.AddLogMessage;
@@ -110,7 +113,7 @@ namespace Steamless.ViewModel
             this.SteamlessVersion = await this.m_DataService.GetSteamlessVersion();
 
             // Load the Steamless plugins..
-            this.Tasks.Add(new LoadPluginsTask());
+            this.Tasks.Add(new LoadPluginsTask(this.m_DataService, this.m_LoggingService));
 
             // Start the application..
             this.Tasks.Add(new StartSteamlessTask());
@@ -134,6 +137,16 @@ namespace Steamless.ViewModel
                 {
                     this.CurrentTask = task;
                     await this.CurrentTask.StartTask();
+
+                    // Consume LoadPluginsTask result on the UI thread..
+                    if (task is LoadPluginsTask lpt && lpt.LoadedPlugins != null)
+                    {
+                        Application.Current.Dispatcher.Invoke(() =>
+                        {
+                            this.Plugins = lpt.LoadedPlugins;
+                            this.SelectedPluginIndex = 0;
+                        });
+                    }
                 }
                 else
                 {
@@ -200,10 +213,7 @@ namespace Steamless.ViewModel
             this.Log.Clear();
         }
 
-        #region == Window Function Callbacks ==================================================================
-        /// <summary>
-        /// Command callback for when the window is being closed.
-        /// </summary>
+        [RelayCommand]
         private void WindowClose()
         {
             // Set the launcher state to closing..
@@ -213,9 +223,7 @@ namespace Steamless.ViewModel
             Application.Current.Shutdown(0);
         }
 
-        /// <summary>
-        /// Command callback for when the window is being minimized.
-        /// </summary>
+        [RelayCommand]
         private static void WindowMinimize()
         {
             // Minimize the window..
@@ -223,21 +231,28 @@ namespace Steamless.ViewModel
                 Application.Current.MainWindow.WindowState = WindowState.Minimized;
         }
 
-        /// <summary>
-        /// Command callback for when the window is being clicked down. (To drag the window.)
-        /// </summary>
-        /// <param name="args"></param>
-        private static void WindowMouseDown(MouseButtonEventArgs args)
+        [RelayCommand]
+        private void WindowMouseDown(MouseButtonEventArgs args)
         {
             if (Application.Current.MainWindow != null)
                 Application.Current.MainWindow.DragMove();
         }
 
-        /// <summary>
-        /// Handles drag and drop events over the input file textbox.
-        /// </summary>
-        /// <param name="args"></param>
-        private void InputFileDragDrop(DragEventArgs args)
+        [RelayCommand]
+        private void ToggleAboutView()
+        {
+            this.ShowAboutView = !this.ShowAboutView;
+        }
+
+        [RelayCommand]
+        private void OpenHyperlink(object parameter)
+        {
+            if (parameter is Hyperlink link)
+                Process.Start(new ProcessStartInfo(link.NavigateUri.AbsoluteUri) { UseShellExecute = true });
+        }
+
+        [RelayCommand]
+        private void DragDrop(DragEventArgs args)
         {
             args.Handled = true;
 
@@ -251,11 +266,8 @@ namespace Steamless.ViewModel
             }
         }
 
-        /// <summary>
-        /// Handles drag and drop events over the input file textbox.
-        /// </summary>
-        /// <param name="args"></param>
-        private void InputFilePreviewDragEnter(DragEventArgs args)
+        [RelayCommand]
+        private void PreviewDragEnter(DragEventArgs args)
         {
             args.Handled = true;
 
@@ -270,9 +282,7 @@ namespace Steamless.ViewModel
                 args.Effects = DragDropEffects.None;
         }
 
-        /// <summary>
-        /// Browses for the input file to be unpacked.
-        /// </summary>
+        [RelayCommand]
         private void BrowseForInputFile()
         {
             // Display the find file dialog..
@@ -294,10 +304,8 @@ namespace Steamless.ViewModel
                 this.InputFilePath = ofd.FileName;
         }
 
-        /// <summary>
-        /// Unpacks the selected file using the selected plugin.
-        /// </summary>
-        private async void UnpackFile()
+        [RelayCommand]
+        private async Task UnpackFileAsync()
         {
             await Task.Run(() =>
             {
@@ -317,8 +325,9 @@ namespace Steamless.ViewModel
                         throw new Exception("Invalid plugin selected.");
 
                     // Allow the plugin to process the file..
+                    var siblings = this.Plugins.Where(p => p != plugin);
                     if (plugin.CanProcessFile(this.InputFilePath))
-                        this.AddLogMessage(this, !plugin.ProcessFile(this.InputFilePath, this.Options) ? new LogMessageEventArgs("Failed to unpack file.", LogMessageType.Error) : new LogMessageEventArgs("Successfully unpacked file!", LogMessageType.Success));
+                        this.AddLogMessage(this, !plugin.ProcessFile(this.InputFilePath, this.Options, siblings) ? new LogMessageEventArgs("Failed to unpack file.", LogMessageType.Error) : new LogMessageEventArgs("Successfully unpacked file!", LogMessageType.Success));
                     else
                         this.AddLogMessage(this, new LogMessageEventArgs("Failed to unpack file.", LogMessageType.Error));
                 }
@@ -330,152 +339,11 @@ namespace Steamless.ViewModel
                 }
             });
         }
-        #endregion
 
-        #region == Window Related Properties ==================================================================
-        /// <summary>
-        /// Gets or sets the window close command.
-        /// </summary>
-        public RelayCommand OnWindowCloseCommand { get; set; }
-
-        /// <summary>
-        /// Gets or sets the window minimize command.
-        /// </summary>
-        public RelayCommand OnWindowMinimizeCommand { get; set; }
-
-        /// <summary>
-        /// Gets or sets the window mouse down command.
-        /// </summary>
-        public RelayCommand<MouseButtonEventArgs> OnWindowMouseDownCommand { get; set; }
-
-        /// <summary>
-        /// Gets or sets the show about view command.
-        /// </summary>
-        public RelayCommand OnShowAboutViewCommand { get; set; }
-
-        /// <summary>
-        /// Gets or sets the open hyperlink command.
-        /// </summary>
-        public RelayCommand<object> OnOpenHyperlinkCommand { get; set; }
-
-        /// <summary>
-        /// Gets or sets the input file textbox drag drop command.
-        /// </summary>
-        public RelayCommand<DragEventArgs> OnDragDropCommand { get; set; }
-
-        /// <summary>
-        /// Gets or sets the input file textbox drag enter command.
-        /// </summary>
-        public RelayCommand<DragEventArgs> OnPreviewDragEnterCommand { get; set; }
-
-        /// <summary>
-        /// Gets or sets the input file browse command.
-        /// </summary>
-        public RelayCommand OnBrowseForInputFileCommand { get; set; }
-
-        /// <summary>
-        /// Gets or sets the unpack file command.
-        /// </summary>
-        public RelayCommand OnUnpackFileCommand { get; set; }
-
-        /// <summary>
-        /// Gets or sets the clear log command.
-        /// </summary>
-        public RelayCommand OnClearLogCommand { get; set; }
-        #endregion
-
-        #region == (All) ViewModel Related Properties =========================================================
-        /// <summary>
-        /// Gets or sets the applications current state.
-        /// </summary>
-        public ApplicationState State
+        [RelayCommand]
+        private void ClearLog()
         {
-            get => this.Get<ApplicationState>("State");
-            set => this.Set("State", value);
+            this.ClearLogMessages(this, EventArgs.Empty);
         }
-
-        /// <summary>
-        /// Gets or sets the Steamless version.
-        /// </summary>
-        public Version SteamlessVersion
-        {
-            get => this.Get<Version>("SteamlessVersion");
-            set => this.Set("SteamlessVersion", value);
-        }
-
-        /// <summary>
-        /// Gets or sets the current task.
-        /// </summary>
-        public BaseTask CurrentTask
-        {
-            get => this.Get<BaseTask>("CurrentTask");
-            set => this.Set("CurrentTask", value);
-        }
-
-        /// <summary>
-        /// Gets or sets the list of tasks.
-        /// </summary>
-        public ConcurrentBag<BaseTask> Tasks
-        {
-            get => this.Get<ConcurrentBag<BaseTask>>("Tasks");
-            set => this.Set("Tasks", value);
-        }
-
-        /// <summary>
-        /// Gets or sets if the about view should be seen.
-        /// </summary>
-        public bool ShowAboutView
-        {
-            get => this.Get<bool>("ShowAboutView");
-            set => this.Set("ShowAboutView", value);
-        }
-        #endregion
-
-        #region == (Main) ViewModel Related Properties ========================================================
-        /// <summary>
-        /// Gets or sets the list of plugins.
-        /// </summary>
-        public ObservableCollection<SteamlessPlugin> Plugins
-        {
-            get => this.Get<ObservableCollection<SteamlessPlugin>>("Plugins");
-            set => this.Set("Plugins", value);
-        }
-
-        /// <summary>
-        /// Gets or sets the selected plugin index.
-        /// </summary>
-        public int SelectedPluginIndex
-        {
-            get => this.Get<int>("SelectedPluginIndex");
-            set => this.Set("SelectedPluginIndex", value);
-        }
-
-        /// <summary>
-        /// Gets or sets the input file path.
-        /// </summary>
-        public string InputFilePath
-        {
-            get => this.Get<string>("InputFilePath");
-            set => this.Set("InputFilePath", value);
-        }
-
-        /// <summary>
-        /// Gets or sets the Steamless options.
-        /// </summary>
-        public SteamlessOptions Options
-        {
-            get => this.Get<SteamlessOptions>("Options");
-            set => this.Set("Options", value);
-        }
-
-        /// <summary>
-        /// Gets or sets the message log.
-        /// </summary>
-        public ObservableCollection<LogMessageEventArgs> Log
-        {
-            get => this.Get<ObservableCollection<LogMessageEventArgs>>("Log");
-            set => this.Set("Log", value);
-        }
-        #endregion
     }
 }

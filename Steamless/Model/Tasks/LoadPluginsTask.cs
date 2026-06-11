@@ -27,19 +27,37 @@ namespace Steamless.Model.Tasks
 {
     using API.Events;
     using API.Model;
+    using API.Services;
     using System.Collections.ObjectModel;
     using System.Linq;
     using System.Threading.Tasks;
-    using System.Windows;
-    using ViewModel;
 
     public class LoadPluginsTask : BaseTask
     {
         /// <summary>
+        /// Internal data service instance.
+        /// </summary>
+        private readonly IDataService m_DataService;
+
+        /// <summary>
+        /// Internal logging service instance.
+        /// </summary>
+        private readonly LoggingService m_LoggingService;
+
+        /// <summary>
+        /// The loaded and sorted plugin list (with AutomaticPlugin at index 0).
+        /// </summary>
+        public ObservableCollection<SteamlessPlugin> LoadedPlugins { get; private set; }
+
+        /// <summary>
         /// Default Constructor
         /// </summary>
-        public LoadPluginsTask()
+        /// <param name="dataService"></param>
+        /// <param name="loggingService"></param>
+        public LoadPluginsTask(IDataService dataService, LoggingService loggingService)
         {
+            this.m_DataService = dataService;
+            this.m_LoggingService = loggingService;
             this.Text = "Loading plugins...";
         }
 
@@ -50,15 +68,8 @@ namespace Steamless.Model.Tasks
         {
             return Task.Run(async () =>
                 {
-                    // Obtain the view model locator..
-                    var vml = Application.Current.FindResource("ViewModelLocator") as ViewModelLocator;
-                    if (vml == null)
-                        return;
-
-                    vml.MainWindow.SelectedPluginIndex = -1;
-
                     // Obtain the list of plugins..
-                    var plugins = await vml.DataService.GetSteamlessPlugins();
+                    var plugins = await this.m_DataService.GetSteamlessPlugins();
 
                     // Sort the plugins..
                     var sorted = plugins.OrderBy(p => p.Name).ToList();
@@ -66,20 +77,16 @@ namespace Steamless.Model.Tasks
                     // Print out the loaded plugins..
                     sorted.ForEach(p =>
                         {
-                            Application.Current.Dispatcher.Invoke(() =>
-                                {
-                                    vml.LoggingService.OnAddLogMessage(this, new LogMessageEventArgs($"Loaded plugin: {p.Name} - by {p.Author} (v.{p.Version})", LogMessageType.Success));
-                                });
+                            this.m_LoggingService.OnAddLogMessage(this, new LogMessageEventArgs($"Loaded plugin: {p.Name} - by {p.Author} (v.{p.Version})", LogMessageType.Success));
                         });
 
                     // Add the automatic plugin at the start of the list..
                     var auto = new AutomaticPlugin();
-                    auto.Initialize(vml.LoggingService);
+                    auto.Initialize(this.m_LoggingService);
                     sorted.Insert(0, auto);
 
-                    // Set the plugins..
-                    vml.MainWindow.Plugins = new ObservableCollection<SteamlessPlugin>(sorted);
-                    vml.MainWindow.SelectedPluginIndex = 0;
+                    // Store the result..
+                    this.LoadedPlugins = new ObservableCollection<SteamlessPlugin>(sorted);
                 });
         }
     }

@@ -25,6 +25,9 @@
 
 namespace Steamless.View
 {
+    using Microsoft.Extensions.DependencyInjection;
+    using Steamless.ViewModel;
+
     /// <summary>
     /// Interaction logic for SplashView.xaml
     /// </summary>
@@ -36,6 +39,7 @@ namespace Steamless.View
         public SplashView()
         {
             this.InitializeComponent();
+            this.DataContext = App.Services.GetRequiredService<MainWindowViewModel>();
         }
     }
 }
