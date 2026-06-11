@@ -153,28 +153,38 @@ namespace Steamless.CLI
             // AssemblyResolve override to load modules from the Plugins folder..
             AppDomain.CurrentDomain.AssemblyResolve += (sender, e) =>
             {
-                // Obtain the name of the assembly being loaded..
-                var name = e.Name.Contains(",") ? e.Name.Substring(0, e.Name.IndexOf(",", StringComparison.InvariantCultureIgnoreCase)) : e.Name.Replace(".dll", "");
-
-                // Ignore resource assembly loading..
-                if (name.ToLower().EndsWith(".resources"))
-                    return null;
-
-                // Build a full path to the possible embedded file..
-                var fullName = $"{Assembly.GetExecutingAssembly().EntryPoint.DeclaringType?.Namespace}.Embedded.{new AssemblyName(e.Name).Name}.dll";
-                using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(fullName))
+                try
                 {
-                    // If not embedded try to load from the plugin folder..
-                    if (stream == null)
-                    {
-                        var f = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Plugins", name + ".dll");
-                        return File.Exists(f) ? Assembly.Load(File.ReadAllBytes(f)) : null;
-                    }
+                    // Obtain the name of the assembly being loaded..
+                    var name = e.Name.Contains(",") ? e.Name.Substring(0, e.Name.IndexOf(",", StringComparison.InvariantCultureIgnoreCase)) : e.Name.Replace(".dll", "");
 
-                    // Read and load the embedded resource..
-                    var data = new byte[stream.Length];
-                    stream.Read(data, 0, (int)stream.Length);
-                    return Assembly.Load(data);
+                    // Ignore resource assembly loading..
+                    if (name.ToLower().EndsWith(".resources"))
+                        return null;
+
+                    // Build a full path to the possible embedded file..
+                    var fullName = $"{Assembly.GetExecutingAssembly().EntryPoint.DeclaringType?.Namespace}.Embedded.{new AssemblyName(e.Name).Name}.dll";
+                    using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(fullName))
+                    {
+                        // If not embedded try to load from the plugin folder..
+                        if (stream == null)
+                        {
+                            var f = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Plugins", name + ".dll");
+                            if (!File.Exists(f))
+                                return null;
+                            return Assembly.Load(File.ReadAllBytes(f));
+                        }
+
+                        // Read and load the embedded resource..
+                        var data = new byte[stream.Length];
+                        stream.ReadExactly(data, 0, (int)stream.Length);
+                        return Assembly.Load(data);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine($"Steamless.CLI: failed to resolve assembly '{e.Name}': {ex.Message}");
+                    return null;
                 }
             };
 
