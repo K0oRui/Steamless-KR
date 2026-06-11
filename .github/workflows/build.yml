@@ -15,6 +15,16 @@ jobs:
         with:
           dotnet-version: '9.0.x'
       - run: dotnet build Steamless.sln
+      - uses: actions/upload-artifact@v4
+        with:
+          name: steamless-windows
+          path: |
+            Steamless.CLI/bin/Debug/net9.0/Steamless.CLI.exe
+            Steamless.CLI/bin/Debug/net9.0/*.dll
+            Steamless.CLI/bin/Debug/net9.0/Plugins/**/*.dll
+            Steamless/bin/x86/Debug/net9.0-windows/Steamless.exe
+            Steamless/bin/x86/Debug/net9.0-windows/*.dll
+            Steamless/bin/x86/Debug/net9.0-windows/*.json
 
   linux:
     runs-on: ubuntu-latest
@@ -33,3 +43,10 @@ jobs:
       - run: dotnet build Steamless.Unpacker.Variant30.x86/Steamless.Unpacker.Variant30.x86.csproj
       - run: dotnet build Steamless.Unpacker.Variant31.x64/Steamless.Unpacker.Variant31.x64.csproj
       - run: dotnet build Steamless.Unpacker.Variant31.x86/Steamless.Unpacker.Variant31.x86.csproj
+      - uses: actions/upload-artifact@v4
+        with:
+          name: steamless-linux
+          path: |
+            Steamless.CLI/bin/Debug/net9.0/Steamless.CLI
+            Steamless.CLI/bin/Debug/net9.0/*.dll
+            Steamless.CLI/bin/Debug/net9.0/Plugins/**/*.dll

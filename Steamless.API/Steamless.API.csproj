@@ -4,6 +4,7 @@
     <OutputType>Library</OutputType>
     <RootNamespace>Steamless.API</RootNamespace>
     <AssemblyName>Steamless.API</AssemblyName>
+    <TargetFramework>net9.0</TargetFramework>
     <NoWarn>SYSLIB0021;CS0618</NoWarn>
   </PropertyGroup>
 
