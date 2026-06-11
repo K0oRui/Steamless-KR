@@ -39,6 +39,9 @@
                 <ResourceDictionary Source="pack://application:,,,/Steamless;component/Assets/Controls.Scrollbars.xaml" />
                 <ResourceDictionary Source="pack://application:,,,/Steamless;component/Assets/Window.xaml" />
             </ResourceDictionary.MergedDictionaries>
+            <Style TargetType="Popup">
+                <Setter Property="AllowsTransparency" Value="False" />
+            </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>
