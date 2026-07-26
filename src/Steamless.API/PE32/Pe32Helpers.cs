@@ -112,7 +112,6 @@ namespace Steamless.API.PE32
             try
             {
                 var data = File.ReadAllBytes(path);
-                var checksum = ComputePeChecksum(data);
 
                 var dosHeader = GetStructure<NativeApi32.ImageDosHeader32>(data, 0);
                 var sigOffset = dosHeader.e_lfanew;
@@ -121,6 +120,10 @@ namespace Steamless.API.PE32
                     (uint)Unsafe.SizeOf<NativeApi32.ImageFileHeader32>() +
                     (uint)CheckSumFieldOffset;
 
+                // Zero the existing checksum field per the PE checksum algorithm spec.
+                Buffer.BlockCopy(new byte[4], 0, data, (int)checksumOffset, 4);
+
+                var checksum = ComputePeChecksum(data);
                 var checksumBytes = BitConverter.GetBytes(checksum);
                 Buffer.BlockCopy(checksumBytes, 0, data, (int)checksumOffset, 4);
 
@@ -139,18 +142,31 @@ namespace Steamless.API.PE32
             {
                 var trimPattern = pattern.Replace(" ", "").Trim();
 
+                var patternData = new List<byte>();
                 var patternMask = new List<bool>();
-                var patternData = Enumerable.Range(0, trimPattern.Length).Where(x => x % 2 == 0)
-                                            .Select(x =>
-                                            {
-                                                var bt = trimPattern.Substring(x, 2);
-                                                patternMask.Add(!bt.Contains('?'));
-                                                return bt.Contains('?') ? (byte)0 : Convert.ToByte(bt, 16);
-                                            }).ToArray();
-
-                for (var x = 0; x < data.Length; x++)
+                for (var i = 0; i < trimPattern.Length; i += 2)
                 {
-                    if (!patternData.Where((t, y) => patternMask[y] && t != data[x + y]).Any())
+                    var bt = trimPattern.Substring(i, 2);
+                    patternMask.Add(!bt.Contains('?'));
+                    patternData.Add(bt.Contains('?') ? (byte)0 : Convert.ToByte(bt, 16));
+                }
+
+                var pd = patternData.ToArray();
+                var pm = patternMask.ToArray();
+                var lastPossible = data.Length - pd.Length;
+
+                for (var x = 0; x <= lastPossible; x++)
+                {
+                    var found = true;
+                    for (var y = 0; y < pd.Length; y++)
+                    {
+                        if (pm[y] && pd[y] != data[x + y])
+                        {
+                            found = false;
+                            break;
+                        }
+                    }
+                    if (found)
                         return (uint)x;
                 }
 

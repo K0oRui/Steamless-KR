@@ -129,10 +129,6 @@ namespace Steamless.Unpacker.Variant20.x86
             this.Options = options;
             this.CodeSectionData = null;
             this.CodeSectionIndex = -1;
-            this.PayloadData = null;
-            this.SteamDrmpData = null;
-            this.SteamDrmpOffsets = new List<int>();
-            this.UseFallbackDrmpOffsets = false;
             this.XorKey = 0;
 
             // Parse the file..
@@ -342,7 +338,7 @@ namespace Steamless.Unpacker.Variant20.x86
         /// <summary>
         /// Scans .rdata section data for the original import descriptor table.
         /// </summary>
-        private uint FindImportDescriptorInRdata(byte[] rdataData, uint rdataRva, NativeApi32.ImageDataDirectory32 currentImport)
+        private uint FindImportDescriptorInRdata(byte[] rdataData, uint rdataRva)
         {
             return FindImportByDllNamePattern(rdataData, rdataRva);
         }
@@ -352,27 +348,6 @@ namespace Steamless.Unpacker.Variant20.x86
         /// </summary>
         private uint FindImportByDllNamePattern(byte[] rdataData, uint rdataRva)
         {
-            var dllStrings = new System.Collections.Generic.List<string>();
-            for (int i = 0; i < rdataData.Length - 6; i++)
-            {
-                if (rdataData[i] >= 0x41 && rdataData[i] <= 0x7A)
-                {
-                    var end = i;
-                    while (end < rdataData.Length && rdataData[end] >= 0x20 && rdataData[end] <= 0x7E)
-                        end++;
-                    var len = end - i;
-                    if (len > 5 && len < 260)
-                    {
-                        var str = System.Text.Encoding.ASCII.GetString(rdataData, i, len);
-                        if (str.EndsWith(".dll", System.StringComparison.OrdinalIgnoreCase))
-                            dllStrings.Add(str);
-                    }
-                }
-            }
-
-            if (dllStrings.Count == 0)
-                return 0;
-
             for (int offset = 0; offset < rdataData.Length - 20; offset += 4)
             {
                 var nameRva = BitConverter.ToUInt32(rdataData, offset + 12);
@@ -448,7 +423,7 @@ namespace Steamless.Unpacker.Variant20.x86
                         if (rdataSection.IsValid)
                         {
                             var rdataData = this.File.GetSectionData(".rdata");
-                            var importRva = this.FindImportDescriptorInRdata(rdataData, rdataSection.VirtualAddress, importTable);
+                            var importRva = this.FindImportDescriptorInRdata(rdataData, rdataSection.VirtualAddress);
                             if (importRva > 0)
                             {
                                 importTable.VirtualAddress = importRva;
@@ -571,29 +546,26 @@ namespace Steamless.Unpacker.Variant20.x86
                 {
                     var inst = decoder.Decode();
 
-                    if (structOffset > 0 && structSize > 0 && structXorKey > 0)
-                    {
-                        offset = structOffset;
-                        size = structSize;
-                        xorKey = structXorKey;
-                        return true;
-                    }
-
                     // Looks for: mov reg, immediate
                     if (inst.Op0Kind == OpKind.Register && IsImmediate32(inst.Op1Kind))
                     {
                         if (structOffset == 0)
                         {
                             structOffset = inst.Immediate32 - this.File.NtHeaders.OptionalHeader.ImageBase;
-                            continue;
+                        }
+                        else if (structSize == 0)
+                        {
+                            structSize = inst.Immediate32 * 4;
+                            structXorKey = 1;
                         }
                     }
 
-                    // Looks for: mov reg, immediate
-                    if (inst.Op0Kind == OpKind.Register && IsImmediate32(inst.Op1Kind))
+                    if (structOffset > 0 && structSize > 0 && structXorKey > 0)
                     {
-                        structSize = inst.Immediate32 * 4;
-                        structXorKey = 1;
+                        offset = structOffset;
+                        size = structSize;
+                        xorKey = structXorKey;
+                        return true;
                     }
                 }
 
@@ -630,25 +602,7 @@ namespace Steamless.Unpacker.Variant20.x86
         /// </summary>
         private dynamic StubHeader { get; set; }
 
-        /// <summary>
-        /// Gets or sets the payload data.
-        /// </summary>
-        public byte[] PayloadData { get; set; }
 
-        /// <summary>
-        /// Gets or sets the SteamDRMP.dll data.
-        /// </summary>
-        public byte[] SteamDrmpData { get; set; }
-
-        /// <summary>
-        /// Gets or sets the list of SteamDRMP.dll offsets.
-        /// </summary>
-        public List<int> SteamDrmpOffsets { get; set; }
-
-        /// <summary>
-        /// Gets or sets if the offsets should be read using fallback values.
-        /// </summary>
-        private bool UseFallbackDrmpOffsets { get; set; }
 
         /// <summary>
         /// Gets or sets the index of the code section.

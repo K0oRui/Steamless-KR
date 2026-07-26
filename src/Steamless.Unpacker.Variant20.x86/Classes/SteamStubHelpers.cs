@@ -43,7 +43,7 @@ namespace Steamless.Unpacker.Variant20.x86.Classes
         /// <returns></returns>
         public static uint SteamXor(ref byte[] data, uint size, uint key = 0)
         {
-            var offset = (uint)0;
+            uint offset = 0;
 
             // Read the first key as the base xor key if we had none given..
             if (key == 0)

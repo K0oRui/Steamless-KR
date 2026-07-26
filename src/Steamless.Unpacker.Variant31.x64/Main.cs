@@ -106,7 +106,7 @@ namespace Steamless.Unpacker.Variant31.x64
                     return false;
 
                 // Obtain the bind section data..
-                var bind = f.GetSectionData(".bind").Take(0x3000).ToArray();
+                var bind = f.GetSectionData(".bind");
 
                 // Attempt to locate the known v3.x signature..
                 var variant = Pe64Helpers.FindPattern(bind, "E8 00 00 00 00 50 53 51 52 56 57 55 41 50");

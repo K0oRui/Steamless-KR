@@ -30,7 +30,11 @@ namespace Steamless.Unpacker.Variant21.x86.Classes
     using System.Runtime.InteropServices;
 
     /// <summary>
-    /// SteamStub DRM Variant 2.1 Header
+    /// SteamStub DRM Variant 2.1 Header (Standard)
+    ///
+    /// This is the standard variant which includes the LoadLibraryW field.
+    /// The D0 variant (SteamStub32Var21Header_D0Variant) omits LoadLibraryW,
+    /// making it 4 bytes smaller. Selected when (structSize / 4) != 0xD0.
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     public struct SteamStub32Var21Header
@@ -67,6 +71,9 @@ namespace Steamless.Unpacker.Variant21.x86.Classes
 
     /// <summary>
     /// SteamStub DRM Variant 2.1 Header (Header Size: 0xD0 Variant)
+    ///
+    /// Identical to SteamStub32Var21Header except it omits the LoadLibraryW
+    /// field (4 bytes smaller). Selected when (structSize / 4) == 0xD0.
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     public struct SteamStub32Var21Header_D0Variant

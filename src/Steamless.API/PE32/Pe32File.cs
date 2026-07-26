@@ -32,6 +32,7 @@ namespace Steamless.API.PE32
     using System.IO;
     using System.Linq;
     using System.Runtime.CompilerServices;
+    using System.Runtime.InteropServices;
 
     /// <summary>
     /// Portable Executable (32bit) Class
@@ -84,7 +85,7 @@ namespace Steamless.API.PE32
             this.FileData = File.ReadAllBytes(this.FilePath);
 
             // Ensure we have valid data by the overall length..
-            if (this.FileData.Length < (Unsafe.SizeOf<NativeApi32.ImageDosHeader32>() + Unsafe.SizeOf<NativeApi32.ImageNtHeaders32>()))
+            if (this.FileData.Length < (Marshal.SizeOf<NativeApi32.ImageDosHeader32>() + Unsafe.SizeOf<NativeApi32.ImageNtHeaders32>()))
                 return false;
 
             // Read the file DOS header..
@@ -98,10 +99,10 @@ namespace Steamless.API.PE32
                 return false;
 
             // Read and store the dos header if it exists..
-            this.DosStubSize = (uint)(this.DosHeader.e_lfanew - Unsafe.SizeOf<NativeApi32.ImageDosHeader32>());
+            this.DosStubSize = (uint)(this.DosHeader.e_lfanew - Marshal.SizeOf<NativeApi32.ImageDosHeader32>());
             if (this.DosStubSize > 0)
             {
-                this.DosStubOffset = (uint)Unsafe.SizeOf<NativeApi32.ImageDosHeader32>();
+                this.DosStubOffset = (uint)Marshal.SizeOf<NativeApi32.ImageDosHeader32>();
                 this.DosStubData = new byte[this.DosStubSize];
                 Array.Copy(this.FileData, this.DosStubOffset, this.DosStubData, 0, this.DosStubSize);
             }
@@ -240,7 +241,7 @@ namespace Steamless.API.PE32
         /// <returns></returns>
         public byte[] GetSectionData(int index)
         {
-            if (index < 0 || index > this.Sections.Count)
+            if (index < 0 || index >= this.Sections.Count)
                 return null;
 
             return this.SectionData[index];

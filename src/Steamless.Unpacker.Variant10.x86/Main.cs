@@ -107,11 +107,7 @@ namespace Steamless.Unpacker.Variant10.x86
                 var bind = f.GetSectionData(".bind");
 
                 // Attempt to locate the known v1.x signature..
-                var variant = Pe32Helpers.FindPattern(bind, "60 81 EC 00 10 00 00 BE ?? ?? ?? ?? B9 6A");
-                if (variant == -1)
-                    return false;
-
-                return true;
+                return Pe32Helpers.FindPattern(bind, "60 81 EC 00 10 00 00 BE ?? ?? ?? ?? B9 6A") != -1;
             }
             catch
             {
@@ -259,7 +255,7 @@ namespace Steamless.Unpacker.Variant10.x86
         /// <summary>
         /// Scans .rdata section data for the original import descriptor table.
         /// </summary>
-        private uint FindImportDescriptorInRdata(byte[] rdataData, uint rdataRva, NativeApi32.ImageDataDirectory32 currentImport)
+        private uint FindImportDescriptorInRdata(byte[] rdataData, uint rdataRva)
         {
             return FindImportByDllNamePattern(rdataData, rdataRva);
         }
@@ -269,27 +265,6 @@ namespace Steamless.Unpacker.Variant10.x86
         /// </summary>
         private uint FindImportByDllNamePattern(byte[] rdataData, uint rdataRva)
         {
-            var dllStrings = new System.Collections.Generic.List<string>();
-            for (int i = 0; i < rdataData.Length - 6; i++)
-            {
-                if (rdataData[i] >= 0x41 && rdataData[i] <= 0x7A)
-                {
-                    var end = i;
-                    while (end < rdataData.Length && rdataData[end] >= 0x20 && rdataData[end] <= 0x7E)
-                        end++;
-                    var len = end - i;
-                    if (len > 5 && len < 260)
-                    {
-                        var str = System.Text.Encoding.ASCII.GetString(rdataData, i, len);
-                        if (str.EndsWith(".dll", System.StringComparison.OrdinalIgnoreCase))
-                            dllStrings.Add(str);
-                    }
-                }
-            }
-
-            if (dllStrings.Count == 0)
-                return 0;
-
             for (int offset = 0; offset < rdataData.Length - 20; offset += 4)
             {
                 var nameRva = BitConverter.ToUInt32(rdataData, offset + 12);
@@ -366,7 +341,7 @@ namespace Steamless.Unpacker.Variant10.x86
                         if (rdataSection.IsValid)
                         {
                             var rdataData = this.File.GetSectionData(".rdata");
-                            var importRva = this.FindImportDescriptorInRdata(rdataData, rdataSection.VirtualAddress, importTable);
+                            var importRva = this.FindImportDescriptorInRdata(rdataData, rdataSection.VirtualAddress);
                             if (importRva > 0)
                             {
                                 importTable.VirtualAddress = importRva;

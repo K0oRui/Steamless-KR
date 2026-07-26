@@ -226,8 +226,9 @@ namespace Steamless.Unpacker.Variant30.x64
             Array.Copy(callback, 0, this.File.GetSectionData(this.File.GetSectionIndex(tlsd)), (int)addr, callback.Length);
 
             // Find the original entry point function..
-            var entry = this.File.GetFileOffsetFromRva(this.File.NtHeaders.OptionalHeader.AddressOfEntryPoint);
-            var data = this.File.FileData.Skip((int)entry).Take(0x100).ToArray();
+            var entry = (int)this.File.GetFileOffsetFromRva(this.File.NtHeaders.OptionalHeader.AddressOfEntryPoint);
+            var data = new byte[Math.Min(0x100, this.File.FileData.Length - entry)];
+            Array.Copy(this.File.FileData, entry, data, 0, data.Length);
 
             // Find the XOR key from within the function..
             var res = Pe64Helpers.FindPattern(data, "48 81 EA ?? ?? ?? ?? 8B 12 81 F2");
