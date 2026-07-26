@@ -14,18 +14,36 @@
 
 # Steamless
 
-> **Fork** — this repository contains fixes and improvements not yet upstreamed.
+> **Fork** — this repository contains fixes, improvements, and modernization not yet upstreamed.
 >
-> ### Variant 2.1
+> ## Modernization
+> - **.NET 9.0 migration** — upgraded from .NET Framework 4.5.2 / .NET 5 to .NET 9.0. SDK pinned via `global.json` (rollForward to latestMajor).
+> - **Nullable reference types** — enabled project-wide; existing code opted out with `#nullable disable` for gradual migration.
+> - **AssemblyInfo cleanup** — deleted all 11 legacy `Properties/AssemblyInfo.cs` files; metadata now auto-generated from SDK-style `.csproj` properties.
+> - **SharpDisasm → Iced** — replaced the abandoned SharpDisasm (native dependency, unmaintained) with Iced v1.21.0 (100% C#, MIT, by 0xd4d/dnlib author) in Variant 2.0 and 2.1 unpackers.
+> - **AesHelper modernization** — `AesCryptoServiceProvider` → `Aes.Create()`.
+> - **Async pattern cleanup** — removed `async void` methods; added `CancellationToken` support; `Thread.Sleep` → `Task.Delay`.
+> - **CLI improvements** — distinct exit codes (1-4); bare `catch {}` replaced with logged stderr output.
+> - **DataService sync-refactored** — interface methods are synchronous; UI thread offload handled at ViewModel level.
+> - **SplashView fixed** — removed binding to non-existent `FileName` property; shows `Text` and percentage progress.
+> - **GUI cleanup** — removed redundant `DataContext` from child views; deleted stale `App.config`.
+> - **Infrastructure added** — `.editorconfig` (code style), `.gitattributes` (line endings), `.gitignore` updates.
+>
+> ## Fixes
+> - **PE buffer underflow** — `GetStructure<T>` now checks `offset + size` instead of just `size`.
+> - **MemoryMarshal revert** — PE structs contain non-blittable `[MarshalAs(ByValArray)] ushort[]` fields that `MemoryMarshal.Read<T>` cannot handle. Reverted to `Marshal.PtrToStructure` (with `OffsetOf` caching retained).
+> - **PlatformTarget fix** — all plugins now build as AnyCPU (MSIL) so they load in a 64-bit host process.
+>
+> ## Variant 2.1
 > - **DRMP offset extraction with fallback chain** — if the hardcoded offset pattern fails, falls back to dynamic disassembly or exhaustive scan (`ScanSteamDrmpOffsets`) to locate valid DRMP offsets, fixing games where the original pattern doesn't match.
 > - **Code section decryption fix** — previously the stolen bytes were included in the AES-CBC decryption input, corrupting the output. Now only the encrypted payload is decrypted; stolen bytes are prepended afterward.
 > - **Import table reconstruction** — when `.bind` is removed, the import directory entry is relocated to the real descriptor table in `.rdata` via DLL name matching (`FindImportByDllNamePattern`). Fixes HUNTED, TCC, xrrengine.
 > - **Certificate table fix** — Authenticode Security directory file offset is updated to the new overlay position after `.bind` removal.
 >
-> ### Variant 3.0/3.1 — DRMP bounds clamping
+> ## Variant 3.0/3.1 — DRMP bounds clamping
 > `DRMPDllSize` clamped to file boundary with 8-byte alignment to prevent buffer over-read (fixes nw.exe).
 >
-> ### Variant 3.1 — Code section decryption corrected
+> ## Variant 3.1 — Code section decryption corrected
 > Stolen bytes and encrypted payload sized were mishandled. Now decrypts only the encrypted portion, then prepends stolen bytes at the correct offset.
 >
 > Original upstream: [atom0s/Steamless](https://github.com/atom0s/Steamless)
@@ -128,20 +146,36 @@ You can find his information here: http://pcgamingwiki.com/wiki/User:Cyanic/Stea
 
 # Compiling Steamless
 
-Steamless is coded using Visual Studio 2022.<br>
-To compile, you should only need to load the sln file and compile as-is.
+**Requirements:**
+- .NET 9.0 SDK (pinned via `global.json`, rollForward to latestMajor)
+- Any C# IDE or `dotnet` CLI
 
-No changes should be needed to the solution or source.
+**Build commands:**
+```powershell
+# Build solution
+dotnet build Steamless.sln -c Release
+
+# Run CLI
+dotnet run --project .\Steamless.CLI -c Release -- <options>
+
+# Run GUI
+dotnet run --project .\Steamless -c Release
+```
+
+**Notes:**
+- Plugin DLLs are loaded dynamically from `Plugins/` at runtime. After building, copy the plugin DLLs and `Iced.dll` (for Variant 2.x) into the output `Plugins/` folder, or use the provided CI scripts.
+- All plugin assemblies are AnyCPU (MSIL) — they load correctly in both 32-bit and 64-bit host processes.
+- The solution can be built from Visual Studio or the `dotnet` CLI.
 
 # Contributing To Steamless (Guidelines)
 
 I welcome and encourage contributions to the Steamless project. However, I do have some guidelines I wish for people to follow when doing so.
 
-  * Please follow the similar coding style / naming conventions found in Steamless already.
-  * Please do not use tabs. Tabs should be 4 spaces instead.  
+  * Follow the `.editorconfig` conventions (4-space indentation, `m_` prefix for private fields, etc.).
   * Please do not introduce additional dependencies without a discussion before hand.
   * Please do not alter or remove any copyrights without a discussion prior.
   * Please do not hard code information specific to any one target. Steamless should be dynamic for all titles.
+  * New code should be nullable-aware (`#nullable enable`). Existing files use `#nullable disable` and can be converted incrementally.
 
 Discussions can be opened within the Issue tracker here:
   * https://github.com/atom0s/Steamless/issues
