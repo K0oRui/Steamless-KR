@@ -1,4 +1,4 @@
-﻿#nullable disable
+#nullable disable
 
 /**
  * Steamless - Copyright (c) 2015 - 2024 atom0s [atom0s@live.com]
@@ -70,6 +70,7 @@ namespace Steamless.Classes
             if (nc == null)
                 return;
 
+            var dpi = VisualTreeHelper.GetDpi(lv);
             nc.CollectionChanged += (o, args) =>
                 {
                     if (lv.ItemContainerGenerator.Status != GeneratorStatus.ContainersGenerated)
@@ -77,7 +78,7 @@ namespace Steamless.Classes
 
                     // Obtain the largest item width..
                     var width = lv.Items.OfType<LogMessageEventArgs>()
-                                  .Select(msg => new FormattedText(msg.Message, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface("Tahoma"), 11, Brushes.Black))
+                                  .Select(msg => new FormattedText(msg.Message, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface("Tahoma"), 11, Brushes.Black, dpi.PixelsPerDip))
                                   .Select(txt => txt.Width)
                                   .Concat(new double[] { 0.0f })
                                   .Max();

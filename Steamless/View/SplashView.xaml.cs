@@ -1,4 +1,4 @@
-﻿#nullable disable
+#nullable disable
 
 /**
  * Steamless - Copyright (c) 2015 - 2024 atom0s [atom0s@live.com]
@@ -27,9 +27,6 @@
 
 namespace Steamless.View
 {
-    using Microsoft.Extensions.DependencyInjection;
-    using Steamless.ViewModel;
-
     /// <summary>
     /// Interaction logic for SplashView.xaml
     /// </summary>
@@ -41,7 +38,6 @@ namespace Steamless.View
         public SplashView()
         {
             this.InitializeComponent();
-            this.DataContext = App.Services.GetRequiredService<MainWindowViewModel>();
         }
     }
 }

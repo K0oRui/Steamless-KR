@@ -94,36 +94,15 @@
                 <TextBlock Grid.Column="0" Grid.Row="1" Foreground="White" VerticalAlignment="Top" Margin="5,5,0,0">
                     <TextBlock.Style>
                         <Style>
-                            <Setter Property="TextBlock.Text" Value="{Binding FileName, StringFormat='Downloading: {0}'}" />
-                            <Setter Property="TextBlock.HorizontalAlignment" Value="Left" />
+                            <Setter Property="TextBlock.Text" Value="{Binding Text}" />
+                            <Setter Property="TextBlock.HorizontalAlignment" Value="Center" />
                             <Style.Triggers>
-                                <DataTrigger Binding="{Binding ProgressTotal, FallbackValue=0, Mode=OneWay}" Value="0">
-                                    <Setter Property="TextBlock.Text" Value="{Binding Text}" />
-                                    <Setter Property="TextBlock.HorizontalAlignment" Value="Center" />
-                                </DataTrigger>
                             </Style.Triggers>
                         </Style>
                     </TextBlock.Style>
                 </TextBlock>
-                <TextBlock Grid.Column="1" Grid.Row="1" Foreground="Black" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,5,5,0">
-                    <TextBlock.Style>
-                        <Style>
-                            <Setter Property="TextBlock.Text">
-                                <Setter.Value>
-                                    <MultiBinding StringFormat="{}[{0:#,##0.0}KB / {1:#,##0.0}KB]">
-                                        <Binding Path="Progress" Mode="OneWay" />
-                                        <Binding Path="ProgressTotal" Mode="OneWay" />
-                                    </MultiBinding>
-                                </Setter.Value>
-                            </Setter>
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding ProgressTotal, FallbackValue=0, Mode=OneWay}" Value="0">
-                                    <Setter Property="TextBlock.Text" Value="" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </TextBlock.Style>
-                </TextBlock>
+                <TextBlock Grid.Column="1" Grid.Row="1" Foreground="Black" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,5,5,0"
+                           Text="{Binding Progress, StringFormat='{}{0:0.0%}'}" />
             </Grid>
         </StackPanel>
 
