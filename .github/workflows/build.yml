@@ -1,52 +1,228 @@
-name: build
+name: release
 
 on:
   push:
-    branches: [master]
-  pull_request:
-    branches: [master]
+    branches:
+      - master
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., v1.0.0 or 1.0.0)'
+        required: true
+        type: string
 
 jobs:
-  windows:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '9.0.x'
-      - run: dotnet build Steamless.sln
-      - uses: actions/upload-artifact@v4
-        with:
-          name: steamless-windows
-          path: |
-            Steamless.CLI/bin/Debug/net9.0/Steamless.CLI.exe
-            Steamless.CLI/bin/Debug/net9.0/*.dll
-            Steamless.CLI/bin/Debug/net9.0/Plugins/**/*.dll
-            Steamless/bin/x86/Debug/net9.0-windows/Steamless.exe
-            Steamless/bin/x86/Debug/net9.0-windows/*.dll
-            Steamless/bin/x86/Debug/net9.0-windows/*.json
-
-  linux:
+  validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - name: Validate version format
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          # Skip validation if triggered by push (no input)
+          if [ -z "$VERSION" ]; then
+            echo "Push event detected, skipping version validation."
+            exit 0
+          fi
+          if [[ ! "$VERSION" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
+            echo "Error: Version must be in format X.Y.Z or vX.Y.Z (e.g., 1.0.0 or v1.0.0)"
+            exit 1
+          fi
+
+  build:
+    needs: validate
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '9.0.x'
-      - run: dotnet build Steamless.API/Steamless.API.csproj
-      - run: dotnet build Steamless.CLI/Steamless.CLI.csproj
-      - run: dotnet build ExamplePlugin/ExamplePlugin.csproj
-      - run: dotnet build Steamless.Unpacker.Variant10.x86/Steamless.Unpacker.Variant10.x86.csproj
-      - run: dotnet build Steamless.Unpacker.Variant20.x86/Steamless.Unpacker.Variant20.x86.csproj
-      - run: dotnet build Steamless.Unpacker.Variant21.x86/Steamless.Unpacker.Variant21.x86.csproj
-      - run: dotnet build Steamless.Unpacker.Variant30.x64/Steamless.Unpacker.Variant30.x64.csproj
-      - run: dotnet build Steamless.Unpacker.Variant30.x86/Steamless.Unpacker.Variant30.x86.csproj
-      - run: dotnet build Steamless.Unpacker.Variant31.x64/Steamless.Unpacker.Variant31.x64.csproj
-      - run: dotnet build Steamless.Unpacker.Variant31.x86/Steamless.Unpacker.Variant31.x86.csproj
-      - uses: actions/upload-artifact@v4
+
+      - uses: actions/cache@v5
         with:
-          name: steamless-linux
-          path: |
-            Steamless.CLI/bin/Debug/net9.0/Steamless.CLI
-            Steamless.CLI/bin/Debug/net9.0/*.dll
-            Steamless.CLI/bin/Debug/net9.0/Plugins/**/*.dll
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Restore
+        run: dotnet restore Steamless.sln
+
+      - name: Build CLI + all plugin projects
+        run: |
+          dotnet build Steamless.CLI -c Release --no-restore
+          dotnet build ExamplePlugin -c Release --no-restore
+          for proj in Variant10.x86 Variant20.x86 Variant21.x86 Variant30.x86 Variant30.x64 Variant31.x86 Variant31.x64; do
+            echo "Building Steamless.Unpacker.$proj..."
+            dotnet build "Steamless.Unpacker.$proj" -c Release --no-restore
+          done
+
+      - name: Build GUI (Windows only)
+        if: runner.os == 'Windows'
+        run: dotnet build Steamless/Steamless.csproj -c Release --no-restore
+
+      - name: Stage artifacts
+        shell: bash
+        run: |
+          CLI_DIR="Steamless.CLI/bin/Release/net9.0"
+          mkdir -p dist/Plugins
+
+          echo "=== CLI output ==="
+          ls -la "$CLI_DIR/" | head -20
+          cp "$CLI_DIR/"* dist/
+
+          if [ -f "dist/Steamless.API.dll" ]; then
+            mv dist/Steamless.API.dll dist/Plugins/
+          fi
+
+          echo "=== Plugin DLLs ==="
+          for proj in Variant10.x86 Variant20.x86 Variant21.x86 Variant30.x86 Variant30.x64 Variant31.x86 Variant31.x64; do
+            dll="Steamless.Unpacker.$proj/bin/Release/net9.0/Steamless.Unpacker.$proj.dll"
+            if [ -f "$dll" ]; then
+              cp "$dll" dist/Plugins/
+              echo "  Copied: $proj"
+            else
+              echo "  MISSING: $dll"
+            fi
+          done
+
+          echo "=== SharpDisasm ==="
+          SHARP=$(find . -path '*/Release/net9.0/SharpDisasm.dll' -print -quit)
+          if [ -n "$SHARP" ]; then
+            cp "$SHARP" dist/Plugins/
+          else
+            echo "  SharpDisasm.dll not found"
+          fi
+
+          echo "=== ExamplePlugin ==="
+          EXAMPLE="ExamplePlugin/bin/Release/net9.0/ExamplePlugin.dll"
+          if [ -f "$EXAMPLE" ]; then
+            cp "$EXAMPLE" dist/Plugins/
+          else
+            echo "  ExamplePlugin.dll not found"
+          fi
+
+      - name: Stage GUI (Windows only)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          GUI_DIR="Steamless/bin/x86/Release/net9.0-windows"
+          if [ -d "$GUI_DIR" ]; then
+            echo "=== GUI output ==="
+            ls -la "$GUI_DIR/" | head -20
+            cp "$GUI_DIR/"* dist/
+            if [ -f "dist/Steamless.API.dll" ] && [ ! -f "dist/Plugins/Steamless.API.dll" ]; then
+              mv dist/Steamless.API.dll dist/Plugins/
+            fi
+          else
+            echo "GUI directory not found: $GUI_DIR"
+          fi
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: steamless-${{ runner.os }}
+          path: dist/
+
+  release:
+    needs: build
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ github.token }}
+
+      - name: Normalize version
+        id: version
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          if [[ ! "$VERSION" =~ ^v ]]; then
+            VERSION="v$VERSION"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - uses: actions/download-artifact@v7
+        with:
+          name: steamless-Windows
+          path: steamless-Windows
+
+      - uses: actions/download-artifact@v7
+        with:
+          name: steamless-Linux
+          path: steamless-Linux
+
+      - name: Package archives
+        run: |
+          VERSION_NAME="${{ steps.version.outputs.version }}"
+          cd steamless-Windows && zip -r ../Steamless-${VERSION_NAME}-windows.zip . && cd ..
+          cd steamless-Linux && tar czf ../Steamless-${VERSION_NAME}-linux.tar.gz . && cd ..
+
+      - name: Generate changelog
+        shell: bash
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          
+          git fetch --tags --force
+
+          PREV_TAG=$(git describe --tags --abbrev=0 --exclude="$VERSION" 2>/dev/null || \
+                     git rev-list --tags --skip=1 --max-count=1 | xargs -r git describe --tags --abbrev=0 2>/dev/null || \
+                     echo "")
+
+          echo "Current Version: $VERSION"
+          echo "Previous Tag: ${PREV_TAG:-<none>}"
+
+          if [ -n "$PREV_TAG" ]; then
+            git log "$PREV_TAG"..HEAD --pretty=format:"* %s (%h)" --no-merges > changelog.txt
+          else
+            git log -20 --pretty=format:"* %s (%h)" --no-merges > changelog.txt
+          fi
+
+          if [ ! -s changelog.txt ]; then
+            echo "* Initial release or no new commits since last tag." > changelog.txt
+          fi
+
+          echo "=== Generated Changelog ==="
+          cat changelog.txt
+
+      - name: Create GitHub release and Git tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION_NAME="${{ steps.version.outputs.version }}"
+          TARGET_REPO="${{ github.repository }}"
+          
+          echo "Checking for existing release: $VERSION_NAME..."
+          
+          # 1. Delete the Release object if it exists (ignore errors if it doesn't)
+          if gh release view "$VERSION_NAME" --repo "$TARGET_REPO" &>/dev/null; then
+            echo "Deleting existing release metadata..."
+            gh release delete "$VERSION_NAME" --repo "$TARGET_REPO" --yes || true
+            # Note: We do NOT use --cleanup-tag here because the tag might not exist yet,
+            # which causes the HTTP 422 error you saw.
+            sleep 2
+          fi
+
+          # 2. Check if the Git tag exists separately and delete it if necessary
+          # This prevents "Tag already exists" errors during creation if the tag is dangling
+          if git rev-parse "refs/tags/$VERSION_NAME" &>/dev/null; then
+            echo "Deleting existing Git tag..."
+            git tag -d "$VERSION_NAME"
+            git push origin :"refs/tags/$VERSION_NAME" || true
+          fi
+
+          echo "Creating new release and tag..."
+          gh release create "$VERSION_NAME" \
+            --repo "$TARGET_REPO" \
+            --title "Steamless ${VERSION_NAME}" \
+            --notes-file changelog.txt \
+            --generate-notes \
+            "Steamless-${VERSION_NAME}-windows.zip" \
+            "Steamless-${VERSION_NAME}-linux.tar.gz"    
