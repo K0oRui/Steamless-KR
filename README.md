@@ -14,6 +14,22 @@
 
 # Steamless
 
+> **Fork** — this repository contains fixes and improvements not yet upstreamed.
+>
+> ### Variant 2.1
+> - **DRMP offset extraction with fallback chain** — if the hardcoded offset pattern fails, falls back to dynamic disassembly or exhaustive scan (`ScanSteamDrmpOffsets`) to locate valid DRMP offsets, fixing games where the original pattern doesn't match.
+> - **Code section decryption fix** — previously the stolen bytes were included in the AES-CBC decryption input, corrupting the output. Now only the encrypted payload is decrypted; stolen bytes are prepended afterward.
+> - **Import table reconstruction** — when `.bind` is removed, the import directory entry is relocated to the real descriptor table in `.rdata` via DLL name matching (`FindImportByDllNamePattern`). Fixes HUNTED, TCC, xrrengine.
+> - **Certificate table fix** — Authenticode Security directory file offset is updated to the new overlay position after `.bind` removal.
+>
+> ### Variant 3.0/3.1 — DRMP bounds clamping
+> `DRMPDllSize` clamped to file boundary with 8-byte alignment to prevent buffer over-read (fixes nw.exe).
+>
+> ### Variant 3.1 — Code section decryption corrected
+> Stolen bytes and encrypted payload sized were mishandled. Now decrypts only the encrypted portion, then prepends stolen bytes at the correct offset.
+>
+> Original upstream: [atom0s/Steamless](https://github.com/atom0s/Steamless)
+
 Steamless is a DRM remover of the various SteamStub variants applied to applications and games released on Steam via the DRM tool in the Steamworks SDK.
 
 Steamless aims to be a single solution for unpacking all variants of the SteamStub DRM, ranging from the very first version to the most recently released.
