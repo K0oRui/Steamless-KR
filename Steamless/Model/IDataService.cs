@@ -1,4 +1,4 @@
-﻿#nullable disable
+#nullable disable
 
 /**
  * Steamless - Copyright (c) 2015 - 2024 atom0s [atom0s@live.com]
@@ -30,20 +30,10 @@ namespace Steamless.Model
     using API.Model;
     using System;
     using System.Collections.Generic;
-    using System.Threading.Tasks;
 
     public interface IDataService
     {
-        /// <summary>
-        /// Obtains the version of Steamless.
-        /// </summary>
-        /// <returns></returns>
-        Task<Version> GetSteamlessVersion();
-
-        /// <summary>
-        /// Obtains a list of available Steamless plugins.
-        /// </summary>
-        /// <returns></returns>
-        Task<List<SteamlessPlugin>> GetSteamlessPlugins();
+        Version GetSteamlessVersion();
+        List<SteamlessPlugin> GetSteamlessPlugins();
     }
 }

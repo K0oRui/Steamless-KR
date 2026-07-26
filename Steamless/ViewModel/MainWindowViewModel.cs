@@ -1,4 +1,4 @@
-﻿#nullable disable
+#nullable disable
 
 /**
  * Steamless - Copyright (c) 2015 - 2024 atom0s [atom0s@live.com]
@@ -60,9 +60,9 @@ namespace Steamless.ViewModel
         private readonly LoggingService m_LoggingService;
 
         /// <summary>
-        /// Internal thread used to process tasks.
+        /// Internal cancellation source for the tasks processing loop.
         /// </summary>
-        private Thread m_TaskThread;
+        private CancellationTokenSource m_TaskCts;
 
         [ObservableProperty] private ApplicationState _state;
         [ObservableProperty] private Version _steamlessVersion;
@@ -106,13 +106,13 @@ namespace Steamless.ViewModel
         }
 
         /// <summary>
-        /// Internal async call to load the main view model.
+        /// Internal call to load the main view model.
         /// </summary>
-        private async void Initialize()
+        private void Initialize()
         {
             // Obtain the Steamless version..
             this.CurrentTask = new StatusTask("Initializing..");
-            this.SteamlessVersion = await this.m_DataService.GetSteamlessVersion();
+            this.SteamlessVersion = this.m_DataService.GetSteamlessVersion();
 
             // Load the Steamless plugins..
             this.Tasks.Add(new LoadPluginsTask(this.m_DataService, this.m_LoggingService));
@@ -120,19 +120,19 @@ namespace Steamless.ViewModel
             // Start the application..
             this.Tasks.Add(new StartSteamlessTask());
 
-            // Start the tasks thread..
-            if (this.m_TaskThread != null)
+            // Start the tasks processing loop..
+            if (this.m_TaskCts != null)
                 return;
-            this.m_TaskThread = new Thread(this.ProcessTasksThread) { IsBackground = true };
-            this.m_TaskThread.Start();
+            this.m_TaskCts = new CancellationTokenSource();
+            _ = Task.Run(() => this.ProcessTasksLoopAsync(this.m_TaskCts.Token));
         }
 
         /// <summary>
-        /// Thread callback to process application tasks.
+        /// Loop to process application tasks.
         /// </summary>
-        private async void ProcessTasksThread()
+        private async Task ProcessTasksLoopAsync(CancellationToken ct)
         {
-            while (Interlocked.CompareExchange(ref this.m_TaskThread, null, null) != null && this.State != ApplicationState.Closing)
+            while (!ct.IsCancellationRequested && this.State != ApplicationState.Closing)
             {
                 // Obtain a task from the task list..
                 if (this.Tasks.TryTake(out var task))
@@ -157,7 +157,7 @@ namespace Steamless.ViewModel
                         this.State = ApplicationState.Running;
                 }
 
-                Thread.Sleep(200);
+                await Task.Delay(200, ct);
             }
         }
 
@@ -220,6 +220,11 @@ namespace Steamless.ViewModel
         {
             // Set the launcher state to closing..
             this.State = ApplicationState.Closing;
+
+            // Cancel the tasks processing loop..
+            this.m_TaskCts?.Cancel();
+            this.m_TaskCts?.Dispose();
+            this.m_TaskCts = null;
 
             // Shutdown the application..
             Application.Current.Shutdown(0);

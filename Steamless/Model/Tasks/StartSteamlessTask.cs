@@ -1,4 +1,4 @@
-﻿#nullable disable
+#nullable disable
 
 /**
  * Steamless - Copyright (c) 2015 - 2024 atom0s [atom0s@live.com]
@@ -27,7 +27,6 @@
 
 namespace Steamless.Model.Tasks
 {
-    using System.Threading;
     using System.Threading.Tasks;
 
     public class StartSteamlessTask : BaseTask
@@ -43,12 +42,9 @@ namespace Steamless.Model.Tasks
         /// <summary>
         /// The tasks main function to execute when started.
         /// </summary>
-        public override Task DoTask()
+        public override async Task DoTask()
         {
-            return Task.Run(() =>
-                {
-                    Thread.Sleep(1000);
-                });
+            await Task.Delay(1000);
         }
     }
 }

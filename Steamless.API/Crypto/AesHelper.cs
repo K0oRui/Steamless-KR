@@ -1,4 +1,4 @@
-﻿#nullable disable
+#nullable disable
 
 /**
  * Steamless - Copyright (c) 2015 - 2024 atom0s [atom0s@live.com]
@@ -47,7 +47,7 @@ namespace Steamless.API.Crypto
         /// <summary>
         /// Internal AES crypto provider.
         /// </summary>
-        private AesCryptoServiceProvider m_AesCryptoProvider;
+        private Aes m_AesCryptoProvider;
 
         /// <summary>
         /// Default Constructor
@@ -63,13 +63,11 @@ namespace Steamless.API.Crypto
             this.m_OriginalIv = iv;
 
             // Create the AES crypto provider..
-            this.m_AesCryptoProvider = new AesCryptoServiceProvider
-            {
-                Key = key,
-                IV = iv,
-                Mode = mode,
-                Padding = padding
-            };
+            this.m_AesCryptoProvider = Aes.Create();
+            this.m_AesCryptoProvider.Key = key;
+            this.m_AesCryptoProvider.IV = iv;
+            this.m_AesCryptoProvider.Mode = mode;
+            this.m_AesCryptoProvider.Padding = padding;
         }
 
         /// <summary>

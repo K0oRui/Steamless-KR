@@ -1,4 +1,4 @@
-﻿#nullable disable
+#nullable disable
 
 /**
  * Steamless - Copyright (c) 2015 - 2024 atom0s [atom0s@live.com]
@@ -132,16 +132,18 @@ namespace Steamless.CLI
 
                         plugins.Add(plugin);
                     }
-                    catch
+                    catch (Exception ex)
                     {
+                        Console.Error.WriteLine($"Steamless.CLI: failed to load plugin '{dll}': {ex.Message}");
                     }
                 }
 
                 // Order the plugins by their name..
                 return plugins.OrderBy(p => p.Name).ToList();
             }
-            catch
+            catch (Exception ex)
             {
+                Console.Error.WriteLine($"Steamless.CLI: failed to enumerate plugins: {ex.Message}");
                 return new List<SteamlessPlugin>();
             }
         }
@@ -217,8 +219,9 @@ namespace Steamless.CLI
                     else
                         e.Message = $"[Steamless] {e.Message}";
                 }
-                catch
+                catch (Exception ex)
                 {
+                    Console.Error.WriteLine($"Steamless.CLI: failed to format log message: {ex.Message}");
                 }
 
                 Console.WriteLine(e.Message);
@@ -254,14 +257,14 @@ namespace Steamless.CLI
             if (string.IsNullOrEmpty(file))
             {
                 Program.PrintHelp();
-                return 1;
+                return 1; // No input file
             }
 
             // Ensure the input file exists..
             if (!File.Exists(file))
             {
                 logService.OnAddLogMessage(null, new LogMessageEventArgs("Invalid input file given; cannot continue.", LogMessageType.Error));
-                return 1;
+                return 2; // File not found
             }
 
             // Collect the list of available plugins..
@@ -272,7 +275,7 @@ namespace Steamless.CLI
             if (plugins.Count == 0)
             {
                 logService.OnAddLogMessage(null, new LogMessageEventArgs("No plugins were loaded; be sure to fully extract Steamless before running!", LogMessageType.Error));
-                return 1;
+                return 3; // No plugins loaded
             }
 
             // Loop through the plugins and try to unpack the file..
@@ -292,7 +295,7 @@ namespace Steamless.CLI
             }
 
             logService.OnAddLogMessage(null, new LogMessageEventArgs("All unpackers failed to unpack file.", LogMessageType.Error));
-            return 1;
+            return 4; // All unpackers failed
         }
     }
 }

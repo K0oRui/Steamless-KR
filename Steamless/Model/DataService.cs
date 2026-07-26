@@ -1,4 +1,4 @@
-﻿#nullable disable
+#nullable disable
 
 /**
  * Steamless - Copyright (c) 2015 - 2024 atom0s [atom0s@live.com]
@@ -36,117 +36,86 @@ namespace Steamless.Model
     using System.IO;
     using System.Linq;
     using System.Reflection;
-    using System.Threading.Tasks;
 
     public class DataService : IDataService
     {
         private readonly LoggingService m_LoggingService;
         private static readonly Version SteamlessApiVersion = new Version(1, 0);
 
-        /// <summary>
-        /// Constructor — receives LoggingService from DI container.
-        /// </summary>
-        /// <param name="loggingService"></param>
         public DataService(LoggingService loggingService)
         {
             this.m_LoggingService = loggingService;
         }
 
-        /// <summary>
-        /// Obtains the version of Steamless.
-        /// </summary>
-        /// <returns></returns>
-        public Task<Version> GetSteamlessVersion()
+        public Version GetSteamlessVersion()
         {
-            return Task.Run(() =>
-                {
-                    try
-                    {
-                        return Assembly.GetExecutingAssembly().EntryPoint.DeclaringType?.Assembly.GetName().Version ?? new Version(0, 0, 0, 0);
-                    }
-                    catch
-                    {
-                        return new Version(0, 0, 0, 0);
-                    }
-                });
+            try
+            {
+                return Assembly.GetExecutingAssembly().EntryPoint.DeclaringType?.Assembly.GetName().Version ?? new Version(0, 0, 0, 0);
+            }
+            catch
+            {
+                return new Version(0, 0, 0, 0);
+            }
         }
 
-        /// <summary>
-        /// Obtains a list of available Steamless plugins.
-        /// </summary>
-        /// <returns></returns>
-        public Task<List<SteamlessPlugin>> GetSteamlessPlugins()
+        public List<SteamlessPlugin> GetSteamlessPlugins()
         {
-            return Task.Run(() =>
+            try
+            {
+                var plugins = new List<SteamlessPlugin>();
+                var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Plugins");
+
+                foreach (var dll in Directory.GetFiles(path, "*.dll"))
                 {
+                    if (dll.ToLower().Contains("steamless.api.dll"))
+                        continue;
+
                     try
                     {
-                        // The list of valid plugins..
-                        var plugins = new List<SteamlessPlugin>();
-
-                        // Build a path to the plugins folder..
-                        var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Plugins");
-
-                        // Loop the DLL files and attempt to load them..
-                        foreach (var dll in Directory.GetFiles(path, "*.dll"))
+                        var asm = Assembly.Load(File.ReadAllBytes(dll));
+                        var baseClass = asm.GetTypes().SingleOrDefault(t => t.BaseType == typeof(SteamlessPlugin));
+                        if (baseClass == null)
                         {
-                            // Skip the Steamless.API.dll file..
-                            if (dll.ToLower().Contains("steamless.api.dll"))
-                                continue;
-
-                            try
-                            {
-                                // Load the assembly..
-                                var asm = Assembly.Load(File.ReadAllBytes(dll));
-
-                                // Locate the class inheriting the plugin base..
-                                var baseClass = asm.GetTypes().SingleOrDefault(t => t.BaseType == typeof(SteamlessPlugin));
-                                if (baseClass == null)
-                                {
-                                    this.m_LoggingService.OnAddLogMessage(this, new LogMessageEventArgs($"Failed to load plugin; could not find SteamlessPlugin base class. ({Path.GetFileName(dll)})", LogMessageType.Warning));
-                                    continue;
-                                }
-
-                                // Locate the SteamlessApiVersion attribute on the base class..
-                                var baseAttr = baseClass.GetCustomAttributes(typeof(SteamlessApiVersionAttribute), false);
-                                if (baseAttr.Length == 0)
-                                {
-                                    this.m_LoggingService.OnAddLogMessage(this, new LogMessageEventArgs($"Failed to load plugin; could not find SteamlessApiVersion attribute. ({Path.GetFileName(dll)})", LogMessageType.Warning));
-                                    continue;
-                                }
-
-                                // Validate the interface version..
-                                var apiVersion = (SteamlessApiVersionAttribute)baseAttr[0];
-                                if (apiVersion.Version != SteamlessApiVersion)
-                                {
-                                    this.m_LoggingService.OnAddLogMessage(this, new LogMessageEventArgs($"Failed to load plugin; invalid API version is being used. ({Path.GetFileName(dll)})", LogMessageType.Warning));
-                                    continue;
-                                }
-
-                                // Create an instance of the plugin..
-                                var plugin = (SteamlessPlugin)Activator.CreateInstance(baseClass);
-                                if (!plugin.Initialize(this.m_LoggingService))
-                                {
-                                    this.m_LoggingService.OnAddLogMessage(this, new LogMessageEventArgs($"Failed to load plugin; plugin failed to initialize. ({Path.GetFileName(dll)})", LogMessageType.Warning));
-                                    continue;
-                                }
-
-                                plugins.Add(plugin);
-                            }
-                            catch
-                            {
-                                this.m_LoggingService.OnAddLogMessage(this, new LogMessageEventArgs($"Failed to load DLL as a Steamless plugin: ({Path.GetFileName(dll)})", LogMessageType.Error));
-                            }
+                            this.m_LoggingService.OnAddLogMessage(this, new LogMessageEventArgs($"Failed to load plugin; could not find SteamlessPlugin base class. ({Path.GetFileName(dll)})", LogMessageType.Warning));
+                            continue;
                         }
 
-                        // Order the plugins by their name..
-                        return plugins.OrderBy(p => p.Name).ToList();
+                        var baseAttr = baseClass.GetCustomAttributes(typeof(SteamlessApiVersionAttribute), false);
+                        if (baseAttr.Length == 0)
+                        {
+                            this.m_LoggingService.OnAddLogMessage(this, new LogMessageEventArgs($"Failed to load plugin; could not find SteamlessApiVersion attribute. ({Path.GetFileName(dll)})", LogMessageType.Warning));
+                            continue;
+                        }
+
+                        var apiVersion = (SteamlessApiVersionAttribute)baseAttr[0];
+                        if (apiVersion.Version != SteamlessApiVersion)
+                        {
+                            this.m_LoggingService.OnAddLogMessage(this, new LogMessageEventArgs($"Failed to load plugin; invalid API version is being used. ({Path.GetFileName(dll)})", LogMessageType.Warning));
+                            continue;
+                        }
+
+                        var plugin = (SteamlessPlugin)Activator.CreateInstance(baseClass);
+                        if (!plugin.Initialize(this.m_LoggingService))
+                        {
+                            this.m_LoggingService.OnAddLogMessage(this, new LogMessageEventArgs($"Failed to load plugin; plugin failed to initialize. ({Path.GetFileName(dll)})", LogMessageType.Warning));
+                            continue;
+                        }
+
+                        plugins.Add(plugin);
                     }
                     catch
                     {
-                        return new List<SteamlessPlugin>();
+                        this.m_LoggingService.OnAddLogMessage(this, new LogMessageEventArgs($"Failed to load DLL as a Steamless plugin: ({Path.GetFileName(dll)})", LogMessageType.Error));
                     }
-                });
+                }
+
+                return plugins.OrderBy(p => p.Name).ToList();
+            }
+            catch
+            {
+                return new List<SteamlessPlugin>();
+            }
         }
     }
 }

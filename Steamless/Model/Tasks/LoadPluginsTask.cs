@@ -1,4 +1,4 @@
-﻿#nullable disable
+#nullable disable
 
 /**
  * Steamless - Copyright (c) 2015 - 2024 atom0s [atom0s@live.com]
@@ -68,12 +68,9 @@ namespace Steamless.Model.Tasks
         /// </summary>
         public override Task DoTask()
         {
-            return Task.Run(async () =>
+            return Task.Run(() =>
                 {
-                    // Obtain the list of plugins..
-                    var plugins = await this.m_DataService.GetSteamlessPlugins();
-
-                    // Sort the plugins..
+                    var plugins = this.m_DataService.GetSteamlessPlugins();
                     var sorted = plugins.OrderBy(p => p.Name).ToList();
 
                     // Print out the loaded plugins..
