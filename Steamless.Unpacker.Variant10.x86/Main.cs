@@ -220,6 +220,16 @@ namespace Steamless.Unpacker.Variant10.x86
         /// <returns></returns>
         private bool Step2()
         {
+            // Save the .bind section info before removal for later use..
+            {
+                var bindSection = this.File.GetSection(".bind");
+                if (bindSection.IsValid)
+                {
+                    this.BindSectionRva = bindSection.VirtualAddress;
+                    this.BindSectionSize = bindSection.VirtualSize;
+                }
+            }
+
             // Remove the bind section if its not requested to be saved..
             if (!this.Options.KeepBindSection)
             {
@@ -242,6 +252,71 @@ namespace Steamless.Unpacker.Variant10.x86
                 this.Log(" --> .bind section was kept in the file.", LogMessageType.Debug);
 
             return true;
+        }
+
+        /// <summary>
+        /// Scans .rdata section data for the original import descriptor table.
+        /// </summary>
+        private uint FindImportDescriptorInRdata(byte[] rdataData, uint rdataRva, NativeApi32.ImageDataDirectory32 currentImport)
+        {
+            return FindImportByDllNamePattern(rdataData, rdataRva);
+        }
+
+        /// <summary>
+        /// Scans .rdata for import descriptors by searching for DLL name RVA patterns.
+        /// </summary>
+        private uint FindImportByDllNamePattern(byte[] rdataData, uint rdataRva)
+        {
+            var dllStrings = new System.Collections.Generic.List<string>();
+            for (int i = 0; i < rdataData.Length - 6; i++)
+            {
+                if (rdataData[i] >= 0x41 && rdataData[i] <= 0x7A)
+                {
+                    var end = i;
+                    while (end < rdataData.Length && rdataData[end] >= 0x20 && rdataData[end] <= 0x7E)
+                        end++;
+                    var len = end - i;
+                    if (len > 5 && len < 260)
+                    {
+                        var str = System.Text.Encoding.ASCII.GetString(rdataData, i, len);
+                        if (str.EndsWith(".dll", System.StringComparison.OrdinalIgnoreCase))
+                            dllStrings.Add(str);
+                    }
+                }
+            }
+
+            if (dllStrings.Count == 0)
+                return 0;
+
+            for (int offset = 0; offset < rdataData.Length - 20; offset += 4)
+            {
+                var nameRva = BitConverter.ToUInt32(rdataData, offset + 12);
+                if (nameRva < rdataRva || nameRva >= rdataRva + rdataData.Length)
+                    continue;
+
+                var nameFileOff = nameRva - rdataRva;
+                if (nameFileOff >= (uint)rdataData.Length)
+                    continue;
+
+                var dllName = System.Text.Encoding.ASCII.GetString(rdataData, (int)nameFileOff, Math.Min(64, rdataData.Length - (int)nameFileOff));
+                var nullIdx = dllName.IndexOf('\0');
+                if (nullIdx >= 0)
+                    dllName = dllName.Substring(0, nullIdx);
+
+                if (!dllName.EndsWith(".dll", System.StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                var origRva = BitConverter.ToUInt32(rdataData, offset);
+                var iatRva = BitConverter.ToUInt32(rdataData, offset + 16);
+                if (origRva < rdataRva || origRva >= rdataRva + rdataData.Length)
+                    continue;
+                if (iatRva < rdataRva || iatRva >= rdataRva + rdataData.Length)
+                    continue;
+
+                return rdataRva + (uint)offset;
+            }
+
+            return 0;
         }
 
         /// <summary>
@@ -278,6 +353,42 @@ namespace Steamless.Unpacker.Variant10.x86
                 var ntHeaders = this.File.NtHeaders;
                 ntHeaders.OptionalHeader.AddressOfEntryPoint = this.OriginalEntryPoint;
                 ntHeaders.OptionalHeader.CheckSum = 0;
+
+                // Fix the import table entry if it points into the removed .bind section..
+                if (!this.Options.KeepBindSection && this.BindSectionSize > 0)
+                {
+                    var importTable = ntHeaders.OptionalHeader.ImportTable;
+                    if (importTable.VirtualAddress >= this.BindSectionRva && importTable.VirtualAddress < this.BindSectionRva + this.BindSectionSize)
+                    {
+                        var rdataSection = this.File.GetSection(".rdata");
+                        if (rdataSection.IsValid)
+                        {
+                            var rdataData = this.File.GetSectionData(".rdata");
+                            var importRva = this.FindImportDescriptorInRdata(rdataData, rdataSection.VirtualAddress, importTable);
+                            if (importRva > 0)
+                            {
+                                importTable.VirtualAddress = importRva;
+                                ntHeaders.OptionalHeader.ImportTable = importTable;
+                                this.Log($" --> Fixed import table pointer to RVA 0x{importRva:X8}", LogMessageType.Debug);
+                            }
+                        }
+                    }
+                }
+
+                // Fix the certificate table entry if a certificate exists and the file layout has changed..
+                if (!this.Options.KeepBindSection && this.BindSectionSize > 0)
+                {
+                    var certTable = ntHeaders.OptionalHeader.CertificateTable;
+                    if (certTable.VirtualAddress > 0 && certTable.Size > 0)
+                    {
+                        var lastSectionRaw = this.File.Sections[this.File.Sections.Count - 1];
+                        var overlayStart = lastSectionRaw.PointerToRawData + lastSectionRaw.SizeOfRawData;
+                        certTable.VirtualAddress = overlayStart;
+                        ntHeaders.OptionalHeader.CertificateTable = certTable;
+                        this.Log($" --> Fixed certificate table pointer to file offset 0x{overlayStart:X8}", LogMessageType.Debug);
+                    }
+                }
+
                 this.File.NtHeaders = ntHeaders;
 
                 // Write the NT headers to the file..
@@ -365,5 +476,15 @@ namespace Steamless.Unpacker.Variant10.x86
         /// Gets or sets the true entry point take from the bind unpacker function.
         /// </summary>
         private uint OriginalEntryPoint { get; set; }
+
+        /// <summary>
+        /// Gets or sets the .bind section virtual address.
+        /// </summary>
+        private uint BindSectionRva { get; set; }
+
+        /// <summary>
+        /// Gets or sets the .bind section virtual size.
+        /// </summary>
+        private uint BindSectionSize { get; set; }
     }
 }

@@ -316,39 +316,149 @@ namespace Steamless.Unpacker.Variant21.x86
         /// Scan, dump and pull needed offsets from within the SteamDRMP.dll file.
         /// </summary>
         /// <returns></returns>
-        private bool Step4()
+        private List<int> TryGetSteamDrmpOffsets(byte[] data, bool fallback)
         {
-            // Scan for the needed data by a known pattern for the block of offset data..
-            var drmpOffset = Pe32Helpers.FindPattern(this.SteamDrmpData, "8B ?? ?? ?? ?? ?? 89 ?? ?? ?? ?? ?? 8B ?? ?? ?? ?? ?? 89 ?? ?? ?? ?? ?? 8B ?? ?? ?? ?? ?? 89 ?? ?? ?? ?? ?? 8B ?? ?? ?? ?? ?? 89 ?? ?? ?? ?? ?? 8B ?? ?? ?? ?? ?? 89 ?? ?? ?? ?? ?? 8D ?? ?? ?? ?? ?? 05");
-            if (drmpOffset == -1)
-            {
-                // Fall-back pattern scan for certain files that fail with the above pattern..
-                drmpOffset = Pe32Helpers.FindPattern(this.SteamDrmpData, "8B ?? ?? ?? ?? ?? 89 ?? ?? ?? ?? ?? 8B ?? ?? ?? ?? ?? 89 ?? ?? ?? ?? ?? 8B ?? ?? ?? ?? ?? 89 ?? ?? ?? ?? ?? 8B ?? ?? ?? ?? ?? 89 ?? ?? ?? ?? ?? 8B");
-                if (drmpOffset == -1)
-                {
-                    // Fall-back pattern (2).. (Seen in some v2 variants.)
-                    drmpOffset = Pe32Helpers.FindPattern(this.SteamDrmpData, "8B ?? ?? ?? ?? ?? 89 ?? ?? ?? ?? ?? 8B ?? ?? ?? ?? ?? A3 ?? ?? ?? ?? 8B ?? ?? ?? ?? ?? A3 ?? ?? ?? ?? 8B ?? ?? ?? ?? ?? A3 ?? ?? ?? ?? 8B");
-                    if (drmpOffset == -1)
-                        return false;
+            // Try dynamic method first if experimental features are enabled..
+            if (this.Options.UseExperimentalFeatures)
+                return this.GetSteamDrmpOffsetsDynamic(data);
 
-                    // Use fallback offsets if this worked..
-                    this.UseFallbackDrmpOffsets = true;
-                }
-            }
+            // Use the hardcoded offset method..
+            var useFallback = fallback;
+            this.UseFallbackDrmpOffsets = useFallback;
+            return this.GetSteamDrmpOffsets(data);
+        }
 
-            // Copy the block of data from the SteamDRMP.dll data..
-            var drmpOffsetData = new byte[1024];
-            Array.Copy(this.SteamDrmpData, drmpOffset, drmpOffsetData, 0, 1024);
-
-            // Obtain the offsets from the file data..
-            var drmpOffsets = (this.Options.UseExperimentalFeatures) ? this.GetSteamDrmpOffsetsDynamic(drmpOffsetData) : this.GetSteamDrmpOffsets(drmpOffsetData);
-            if (drmpOffsets.Count != 8)
+        private bool ValidateSteamDrmpOffsets(List<int> offsets)
+        {
+            if (offsets.Count != 8)
                 return false;
 
-            // Store the offsets..
-            this.SteamDrmpOffsets = drmpOffsets;
+            // Always validate the flags offset since it is used for encryption detection..
+            if (offsets[0] < 0 || offsets[0] + 4 > this.PayloadData.Length)
+                return false;
+
+            // Check if the file uses encryption by reading the flags..
+            var flags = BitConverter.ToUInt32(this.PayloadData.Skip(offsets[0]).Take(4).ToArray(), 0);
+            if ((flags & (uint)DrmFlags.NoEncryption) != (uint)DrmFlags.NoEncryption)
+            {
+                // File is encrypted — validate encryption-related offsets..
+                if (offsets[4] < 0 || offsets[4] + 4 > this.PayloadData.Length)
+                    return false;
+                if (offsets[5] < 0 || offsets[5] + 32 > this.PayloadData.Length)
+                    return false;
+                if (offsets[6] < 0 || offsets[6] + 16 > this.PayloadData.Length)
+                    return false;
+                if (offsets[7] < 0 || offsets[7] + 16 > this.PayloadData.Length)
+                    return false;
+            }
 
             return true;
+        }
+
+        private bool Step4()
+        {
+            // Define patterns to try, with corresponding fallback flag..
+            var patterns = new List<(string Pattern, bool IsFallback)>
+                {
+                    ("8B ?? ?? ?? ?? ?? 89 ?? ?? ?? ?? ?? 8B ?? ?? ?? ?? ?? 89 ?? ?? ?? ?? ?? 8B ?? ?? ?? ?? ?? 89 ?? ?? ?? ?? ?? 8B ?? ?? ?? ?? ?? 89 ?? ?? ?? ?? ?? 8B ?? ?? ?? ?? ?? 89 ?? ?? ?? ?? ?? 8D ?? ?? ?? ?? ?? 05", false),
+                    ("8B ?? ?? ?? ?? ?? 89 ?? ?? ?? ?? ?? 8B ?? ?? ?? ?? ?? 89 ?? ?? ?? ?? ?? 8B ?? ?? ?? ?? ?? 89 ?? ?? ?? ?? ?? 8B ?? ?? ?? ?? ?? 89 ?? ?? ?? ?? ?? 8B", false),
+                    ("8B ?? ?? ?? ?? ?? 89 ?? ?? ?? ?? ?? 8B ?? ?? ?? ?? ?? A3 ?? ?? ?? ?? 8B ?? ?? ?? ?? ?? A3 ?? ?? ?? ?? 8B ?? ?? ?? ?? ?? A3 ?? ?? ?? ?? 8B", true)
+                };
+
+            foreach (var (pattern, isFallback) in patterns)
+            {
+                var drmpOffset = Pe32Helpers.FindPattern(this.SteamDrmpData, pattern);
+                if (drmpOffset == -1)
+                    continue;
+
+                // Try with the known hardcoded offsets first..
+                foreach (var useFallback in new[] { false, true })
+                {
+                    var drmpOffsetData = new byte[1024];
+                    Array.Copy(this.SteamDrmpData, drmpOffset, drmpOffsetData, 0, 1024);
+
+                    this.UseFallbackDrmpOffsets = useFallback;
+                    var drmpOffsets = this.GetSteamDrmpOffsets(drmpOffsetData);
+                    if (drmpOffsets.Count != 8)
+                        continue;
+
+                    if (this.ValidateSteamDrmpOffsets(drmpOffsets))
+                    {
+                        this.SteamDrmpOffsets = drmpOffsets;
+                        return true;
+                    }
+                }
+
+                // Hardcoded offsets failed — try the dynamic disassembler method on this data block..
+                var drmpOffsetData2 = new byte[1024];
+                Array.Copy(this.SteamDrmpData, drmpOffset, drmpOffsetData2, 0, 1024);
+                var dynOffsets = this.GetSteamDrmpOffsetsDynamic(drmpOffsetData2);
+                if (dynOffsets.Count == 8 && this.ValidateSteamDrmpOffsets(dynOffsets))
+                {
+                    this.Log($" --> Using dynamic offset extraction.", LogMessageType.Debug);
+                    this.SteamDrmpOffsets = dynOffsets;
+                    return true;
+                }
+
+                // Hardcoded and dynamic both failed for this pattern — try scanning for the correct layout..
+                this.Log($" --> Scanning for correct offset layout in DRMP data block...", LogMessageType.Debug);
+                var foundOffsets = this.ScanSteamDrmpOffsets(this.SteamDrmpData, drmpOffset);
+                if (foundOffsets != null)
+                {
+                    this.Log($" --> Found valid offsets via scan.", LogMessageType.Debug);
+                    this.SteamDrmpOffsets = foundOffsets;
+                    return true;
+                }
+
+                this.Log($" --> Pattern matched but could not find valid offsets, trying next pattern.", LogMessageType.Debug);
+            }
+
+            return false;
+        }
+
+        private List<int> ScanSteamDrmpOffsets(byte[] steamDrmpData, long scanOffset)
+        {
+            var data = new byte[1024];
+            Array.Copy(steamDrmpData, scanOffset, data, 0, 1024);
+
+            var payloadLimit = this.PayloadData.Length;
+
+            for (int start = 0; start < data.Length - 28; start += 2)
+            {
+                var vals = new List<int>();
+                for (int j = 0; j < 6; j++)
+                    vals.Add(BitConverter.ToInt32(data, start + j * 4));
+
+                // vals[6] is the IV offset (used to compute vals[7])
+                var ivOffset = BitConverter.ToInt32(data, start + 6 * 4);
+                vals.Add(ivOffset);
+                vals.Add(ivOffset + 16);
+
+                if (vals[0] < 0 || vals[0] + 4 > payloadLimit)
+                    continue;
+
+                var flags = BitConverter.ToUInt32(this.PayloadData, vals[0]);
+                var noEnc = (flags & (uint)DrmFlags.NoEncryption) == (uint)DrmFlags.NoEncryption;
+
+                if (vals[3] < 0 || vals[3] + 4 > payloadLimit)
+                    continue;
+
+                if (!noEnc)
+                {
+                    if (vals[4] < 0 || vals[4] + 4 > payloadLimit) continue;
+                    if (vals[5] < 0 || vals[5] + 32 > payloadLimit) continue;
+                    if (vals[6] < 0 || vals[6] + 16 > payloadLimit) continue;
+                    if (vals[7] < 0 || vals[7] + 16 > payloadLimit) continue;
+
+                    if (vals[5] + 32 > vals[6]) continue;
+                    if (vals[6] + 16 != vals[7]) continue;
+                }
+
+                this.Log($" --> Found valid offset layout at byte offset {start} in data block!", LogMessageType.Debug);
+                return vals;
+            }
+
+            return null;
         }
 
         /// <summary>
@@ -359,6 +469,16 @@ namespace Steamless.Unpacker.Variant21.x86
         /// <returns></returns>
         private bool Step5()
         {
+            // Save the .bind section info before removal for later use..
+            {
+                var bindSection = this.File.GetSection(".bind");
+                if (bindSection.IsValid)
+                {
+                    this.BindSectionRva = bindSection.VirtualAddress;
+                    this.BindSectionSize = bindSection.VirtualSize;
+                }
+            }
+
             // Remove the bind section if its not requested to be saved..
             if (!this.Options.KeepBindSection)
             {
@@ -419,15 +539,26 @@ namespace Steamless.Unpacker.Variant21.x86
                     var codeStolen = this.PayloadData.Skip(this.SteamDrmpOffsets[7]).Take(16).ToArray();
                     encryptedSize = BitConverter.ToUInt32(this.PayloadData.Skip(this.SteamDrmpOffsets[4]).Take(4).ToArray(), 0);
 
-                    // Restore the stolen data then read the rest of the section data..
-                    codeSectionData = new byte[encryptedSize + codeStolen.Length];
-                    Array.Copy(codeStolen, 0, codeSectionData, 0, codeStolen.Length);
-                    Array.Copy(this.File.FileData, this.File.GetFileOffsetFromRva(mainSection.VirtualAddress), codeSectionData, codeStolen.Length, encryptedSize);
+                    // Validate offsets before proceeding..
+                    if (aesKey.Length != 32 || aesIv.Length != 16 || codeStolen.Length != 16)
+                    {
+                        this.Log($" --> Invalid encryption offsets (key={aesKey.Length}, iv={aesIv.Length}, stolen={codeStolen.Length}, payloadLen={this.PayloadData.Length}, useFallback={this.UseFallbackDrmpOffsets})", LogMessageType.Warning);
+                        return false;
+                    }
 
-                    // Decrypt the code section..
+                    // Read the encrypted section data from the file..
+                    var encryptedData = new byte[encryptedSize];
+                    Array.Copy(this.File.FileData, this.File.GetFileOffsetFromRva(mainSection.VirtualAddress), encryptedData, 0, encryptedSize);
+
+                    // Decrypt the code section data using AES-CBC..
                     var aes = new AesHelper(aesKey, aesIv);
                     aes.RebuildIv(aesIv);
-                    codeSectionData = aes.Decrypt(codeSectionData, CipherMode.CBC, PaddingMode.None);
+                    var decryptedData = aes.Decrypt(encryptedData, CipherMode.CBC, PaddingMode.None);
+
+                    // Prepend the stolen bytes to restore the full original section data..
+                    codeSectionData = new byte[codeStolen.Length + decryptedData.Length];
+                    Array.Copy(codeStolen, 0, codeSectionData, 0, codeStolen.Length);
+                    Array.Copy(decryptedData, 0, codeSectionData, codeStolen.Length, decryptedData.Length);
                 }
                 catch
                 {
@@ -436,11 +567,15 @@ namespace Steamless.Unpacker.Variant21.x86
                 }
             }
 
-            // Merge the code section data..
-            var sectionData = this.File.SectionData[this.CodeSectionIndex];
-            Array.Copy(codeSectionData, sectionData, encryptedSize);
-
-            this.CodeSectionData = sectionData;
+            if (this.CodeSectionIndex >= 0)
+            {
+                var sectionData = this.File.SectionData[this.CodeSectionIndex];
+                var copySize = Math.Min(codeSectionData.Length, sectionData.Length);
+                Array.Copy(codeSectionData, sectionData, copySize);
+                this.CodeSectionData = sectionData;
+            }
+            else
+                this.CodeSectionData = codeSectionData;
 
             return true;
         }
@@ -451,6 +586,77 @@ namespace Steamless.Unpacker.Variant21.x86
         /// Rebuild and save the unpacked file.
         /// </summary>
         /// <returns></returns>
+        /// <summary>
+        /// Scans .rdata section data for the original import descriptor table.
+        /// </summary>
+        private uint FindImportDescriptorInRdata(byte[] rdataData, uint rdataRva, NativeApi32.ImageDataDirectory32 currentImport)
+        {
+            return FindImportByDllNamePattern(rdataData, rdataRva);
+        }
+
+        /// <summary>
+        /// Scans .rdata for import descriptors by searching for DLL name RVA patterns.
+        /// Finds the first IMAGE_IMPORT_DESCRIPTOR whose Name field points to a valid DLL name string.
+        /// </summary>
+        private uint FindImportByDllNamePattern(byte[] rdataData, uint rdataRva)
+        {
+            // Build a list of known DLL name strings by scanning .rdata..
+            var dllStrings = new System.Collections.Generic.List<string>();
+            for (int i = 0; i < rdataData.Length - 6; i++)
+            {
+                if (rdataData[i] >= 0x41 && rdataData[i] <= 0x7A)
+                {
+                    // Read until null terminator or non-printable
+                    var end = i;
+                    while (end < rdataData.Length && rdataData[end] >= 0x20 && rdataData[end] <= 0x7E)
+                        end++;
+                    var len = end - i;
+                    if (len > 5 && len < 260)
+                    {
+                        var str = System.Text.Encoding.ASCII.GetString(rdataData, i, len);
+                        if (str.EndsWith(".dll", System.StringComparison.OrdinalIgnoreCase))
+                            dllStrings.Add(str);
+                    }
+                }
+            }
+
+            if (dllStrings.Count == 0)
+                return 0;
+
+            // Scan .rdata for IMAGE_IMPORT_DESCRIPTOR entries..
+            for (int offset = 0; offset < rdataData.Length - 20; offset += 4)
+            {
+                var nameRva = BitConverter.ToUInt32(rdataData, offset + 12);
+                if (nameRva < rdataRva || nameRva >= rdataRva + rdataData.Length)
+                    continue;
+
+                // Read the DLL name at this RVA..
+                var nameFileOff = nameRva - rdataRva;
+                if (nameFileOff >= (uint)rdataData.Length)
+                    continue;
+
+                var dllName = System.Text.Encoding.ASCII.GetString(rdataData, (int)nameFileOff, Math.Min(64, rdataData.Length - (int)nameFileOff));
+                var nullIdx = dllName.IndexOf('\0');
+                if (nullIdx >= 0)
+                    dllName = dllName.Substring(0, nullIdx);
+
+                if (!dllName.EndsWith(".dll", System.StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                // Check the OriginalFirstThunk and FirstThunk fields are in range..
+                var origRva = BitConverter.ToUInt32(rdataData, offset);
+                var iatRva = BitConverter.ToUInt32(rdataData, offset + 16);
+                if (origRva < rdataRva || origRva >= rdataRva + rdataData.Length)
+                    continue;
+                if (iatRva < rdataRva || iatRva >= rdataRva + rdataData.Length)
+                    continue;
+
+                return rdataRva + (uint)offset;
+            }
+
+            return 0;
+        }
+
         private bool Step6()
         {
             FileStream fStream = null;
@@ -482,6 +688,45 @@ namespace Steamless.Unpacker.Variant21.x86
                 ntHeaders.OptionalHeader.AddressOfEntryPoint = this.File.GetRvaFromVa(originalEntry);
                 ntHeaders.OptionalHeader.CheckSum = 0;
                 ntHeaders.OptionalHeader.SizeOfImage = this.File.GetAlignment(lastSection.VirtualAddress + lastSection.VirtualSize, this.File.NtHeaders.OptionalHeader.SectionAlignment);
+
+                // Fix the import table entry if it points into the removed .bind section..
+                if (!this.Options.KeepBindSection && this.BindSectionSize > 0)
+                {
+                    var importTable = ntHeaders.OptionalHeader.ImportTable;
+                    if (importTable.VirtualAddress >= this.BindSectionRva && importTable.VirtualAddress < this.BindSectionRva + this.BindSectionSize)
+                    {
+                        // Scan .rdata for the original import descriptors..
+                        var rdataSection = this.File.GetSection(".rdata");
+                        if (rdataSection.IsValid)
+                        {
+                            var rdataData = this.File.GetSectionData(".rdata");
+                            var rdataEnd = rdataSection.VirtualAddress + rdataSection.VirtualSize;
+                            var importRva = this.FindImportDescriptorInRdata(rdataData, rdataSection.VirtualAddress, importTable);
+                            if (importRva > 0)
+                            {
+                                importTable.VirtualAddress = importRva;
+                                ntHeaders.OptionalHeader.ImportTable = importTable;
+                                this.Log($" --> Fixed import table pointer to RVA 0x{importRva:X8}", LogMessageType.Debug);
+                            }
+                        }
+                    }
+                }
+
+                // Fix the certificate table entry if a certificate exists and the file layout has changed..
+                if (!this.Options.KeepBindSection && this.BindSectionSize > 0)
+                {
+                    var certTable = ntHeaders.OptionalHeader.CertificateTable;
+                    if (certTable.VirtualAddress > 0 && certTable.Size > 0)
+                    {
+                        // The security entry uses a file offset (not RVA). Update it to the current overlay position.
+                        var lastSectionRaw = this.File.Sections[this.File.Sections.Count - 1];
+                        var overlayStart = lastSectionRaw.PointerToRawData + lastSectionRaw.SizeOfRawData;
+                        certTable.VirtualAddress = overlayStart;
+                        ntHeaders.OptionalHeader.CertificateTable = certTable;
+                        this.Log($" --> Fixed certificate table pointer to file offset 0x{overlayStart:X8}", LogMessageType.Debug);
+                    }
+                }
+
                 this.File.NtHeaders = ntHeaders;
 
                 // Write the NT headers to the file..
@@ -807,5 +1052,15 @@ namespace Steamless.Unpacker.Variant21.x86
         /// Gets or sets the decrypted code section data.
         /// </summary>
         private byte[] CodeSectionData { get; set; }
+
+        /// <summary>
+        /// Gets or sets the .bind section virtual address.
+        /// </summary>
+        private uint BindSectionRva { get; set; }
+
+        /// <summary>
+        /// Gets or sets the .bind section virtual size.
+        /// </summary>
+        private uint BindSectionSize { get; set; }
     }
 }
