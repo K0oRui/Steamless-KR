@@ -1,4 +1,4 @@
-﻿#nullable disable
+#nullable disable
 
 /**
  * Steamless - Copyright (c) 2015 - 2024 atom0s [atom0s@live.com]
@@ -31,73 +31,57 @@ namespace Steamless.API.PE32
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
+    using System.Runtime.CompilerServices;
     using System.Runtime.InteropServices;
 
     public class Pe32Helpers
     {
-        /// <summary>
-        /// Converts a byte array to the given structure type.
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="data"></param>
-        /// <param name="offset"></param>
-        /// <returns></returns>
-        public static T GetStructure<T>(byte[] data, int offset = 0)
+        private static readonly int OptionalHeaderFieldOffset = Marshal.OffsetOf(typeof(NativeApi32.ImageNtHeaders32), "OptionalHeader").ToInt32();
+        private static readonly int CheckSumFieldOffset = Marshal.OffsetOf(typeof(NativeApi32.ImageOptionalHeader32), "CheckSum").ToInt32();
+
+        public static T GetStructure<T>(byte[] data, int offset = 0) where T : struct
         {
-            var size = Marshal.SizeOf(typeof(T));
+            var size = Marshal.SizeOf<T>();
+            if (offset + size > data.Length)
+                return default;
+
             var ptr = Marshal.AllocHGlobal(size);
-
-            // Size can land up being bigger than our buffer..
-            if (size > data.Length)
-                size = Math.Min(data.Length, Math.Max(0, size));
-
-            Marshal.Copy(data, offset, ptr, size);
-            var obj = (T)Marshal.PtrToStructure(ptr, typeof(T));
-            Marshal.FreeHGlobal(ptr);
-
-            return obj;
+            try
+            {
+                Marshal.Copy(data, offset, ptr, size);
+                return Marshal.PtrToStructure<T>(ptr);
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(ptr);
+            }
         }
 
-        /// <summary>
-        /// Converts the given object back to a byte array.
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="obj"></param>
-        /// <returns></returns>
-        public static byte[] GetStructureBytes<T>(T obj)
+        public static byte[] GetStructureBytes<T>(T obj) where T : struct
         {
-            var size = Marshal.SizeOf(obj);
-            var data = new byte[size];
+            var size = Marshal.SizeOf<T>();
             var ptr = Marshal.AllocHGlobal(size);
-            Marshal.StructureToPtr(obj, ptr, true);
-            Marshal.Copy(ptr, data, 0, size);
-            Marshal.FreeHGlobal(ptr);
-            return data;
+            try
+            {
+                Marshal.StructureToPtr(obj, ptr, false);
+                var bytes = new byte[size];
+                Marshal.Copy(ptr, bytes, 0, size);
+                return bytes;
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(ptr);
+            }
         }
 
-        /// <summary>
-        /// Obtains a section from the given file information.
-        /// </summary>
-        /// <param name="rawData"></param>
-        /// <param name="index"></param>
-        /// <param name="dosHeader"></param>
-        /// <param name="ntHeaders"></param>
-        /// <returns></returns>
         public static NativeApi32.ImageSectionHeader32 GetSection(byte[] rawData, int index, NativeApi32.ImageDosHeader32 dosHeader, NativeApi32.ImageNtHeaders32 ntHeaders)
         {
-            var sectionSize = Marshal.SizeOf(typeof(NativeApi32.ImageSectionHeader32));
-            var optionalHeaderOffset = Marshal.OffsetOf(typeof(NativeApi32.ImageNtHeaders32), "OptionalHeader").ToInt32();
-            var dataOffset = dosHeader.e_lfanew + optionalHeaderOffset + ntHeaders.FileHeader.SizeOfOptionalHeader;
+            var sectionSize = Unsafe.SizeOf<NativeApi32.ImageSectionHeader32>();
+            var dataOffset = dosHeader.e_lfanew + OptionalHeaderFieldOffset + ntHeaders.FileHeader.SizeOfOptionalHeader;
 
             return GetStructure<NativeApi32.ImageSectionHeader32>(rawData, dataOffset + (index * sectionSize));
         }
 
-        /// <summary>
-        /// Computes the PE checksum using the Fletcher-based algorithm
-        /// (identical to Windows imagehlp!MapFileAndCheckSum).
-        /// </summary>
-        /// <param name="data">Raw file bytes.</param>
-        /// <returns>The 32-bit PE checksum.</returns>
         private static uint ComputePeChecksum(byte[] data)
         {
             uint checksum = 0;
@@ -123,36 +107,23 @@ namespace Steamless.API.PE32
             return checksum;
         }
 
-        /// <summary>
-        /// Updates the given files PE checksum value.
-        /// </summary>
-        /// <param name="path"></param>
-        /// <returns></returns>
         public static bool UpdateFileChecksum(string path)
         {
             try
             {
-                // Read the file into memory to compute and write the new checksum..
                 var data = File.ReadAllBytes(path);
-
-                // Compute the PE checksum from the raw file bytes..
                 var checksum = ComputePeChecksum(data);
 
-                // Parse the DOS header to locate the PE signature offset..
                 var dosHeader = GetStructure<NativeApi32.ImageDosHeader32>(data, 0);
                 var sigOffset = dosHeader.e_lfanew;
 
-                // Calculate the offset to the CheckSum field:
-                //   sigOffset + PE signature (4 bytes) + FileHeader + offset of CheckSum within OptionalHeader..
                 var checksumOffset = sigOffset + 4 +
-                    (uint)Marshal.SizeOf(typeof(NativeApi32.ImageFileHeader32)) +
-                    (uint)Marshal.OffsetOf(typeof(NativeApi32.ImageOptionalHeader32), "CheckSum").ToInt32();
+                    (uint)Unsafe.SizeOf<NativeApi32.ImageFileHeader32>() +
+                    (uint)CheckSumFieldOffset;
 
-                // Overwrite the file checksum at the correct offset..
                 var checksumBytes = BitConverter.GetBytes(checksum);
                 Buffer.BlockCopy(checksumBytes, 0, data, (int)checksumOffset, 4);
 
-                // Write the patched data back to the file..
                 File.WriteAllBytes(path, data);
                 return true;
             }
@@ -162,24 +133,12 @@ namespace Steamless.API.PE32
             }
         }
 
-        /// <summary>
-        /// Scans the given data for the given pattern.
-        /// 
-        /// Notes:
-        ///     Patterns are assumed to be 2 byte hex values with spaces.
-        ///     Wildcards are represented by ??.
-        /// </summary>
-        /// <param name="data"></param>
-        /// <param name="pattern"></param>
-        /// <returns></returns>
         public static long FindPattern(byte[] data, string pattern)
         {
             try
             {
-                // Trim the pattern from extra whitespace..
                 var trimPattern = pattern.Replace(" ", "").Trim();
 
-                // Convert the pattern to a byte array..
                 var patternMask = new List<bool>();
                 var patternData = Enumerable.Range(0, trimPattern.Length).Where(x => x % 2 == 0)
                                             .Select(x =>
@@ -189,7 +148,6 @@ namespace Steamless.API.PE32
                                                 return bt.Contains('?') ? (byte)0 : Convert.ToByte(bt, 16);
                                             }).ToArray();
 
-                // Scan the given data for our pattern..
                 for (var x = 0; x < data.Length; x++)
                 {
                     if (!patternData.Where((t, y) => patternMask[y] && t != data[x + y]).Any())

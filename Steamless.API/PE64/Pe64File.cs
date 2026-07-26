@@ -1,4 +1,4 @@
-﻿#nullable disable
+#nullable disable
 
 /**
  * Steamless - Copyright (c) 2015 - 2024 atom0s [atom0s@live.com]
@@ -31,7 +31,7 @@ namespace Steamless.API.PE64
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
-    using System.Runtime.InteropServices;
+    using System.Runtime.CompilerServices;
 
     /// <summary>
     /// Portable Executable (64bit) Class
@@ -84,7 +84,7 @@ namespace Steamless.API.PE64
             this.FileData = File.ReadAllBytes(this.FilePath);
 
             // Ensure we have valid data by the overall length..
-            if (this.FileData.Length < (Marshal.SizeOf(typeof(NativeApi64.ImageDosHeader64)) + Marshal.SizeOf(typeof(NativeApi64.ImageNtHeaders64))))
+            if (this.FileData.Length < (Unsafe.SizeOf<NativeApi64.ImageDosHeader64>() + Unsafe.SizeOf<NativeApi64.ImageNtHeaders64>()))
                 return false;
 
             // Read the file DOS header..
@@ -98,10 +98,10 @@ namespace Steamless.API.PE64
                 return false;
 
             // Read and store the dos header if it exists..
-            this.DosStubSize = (uint)(this.DosHeader.e_lfanew - Marshal.SizeOf(typeof(NativeApi64.ImageDosHeader64)));
+            this.DosStubSize = (ulong)(this.DosHeader.e_lfanew - Unsafe.SizeOf<NativeApi64.ImageDosHeader64>());
             if (this.DosStubSize > 0)
             {
-                this.DosStubOffset = (uint)Marshal.SizeOf(typeof(NativeApi64.ImageDosHeader64));
+                this.DosStubOffset = (ulong)Unsafe.SizeOf<NativeApi64.ImageDosHeader64>();
                 this.DosStubData = new byte[this.DosStubSize];
                 Array.Copy(this.FileData, (int)this.DosStubOffset, this.DosStubData, 0, (int)this.DosStubSize);
             }
