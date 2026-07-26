@@ -1,4 +1,6 @@
-﻿/**
+#nullable disable
+
+/**
  * Steamless - Copyright (c) 2015 - 2024 atom0s [atom0s@live.com]
  *
  * This work is licensed under the Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License.

@@ -130,6 +130,9 @@ DocProject/Help/html
 # Click-Once directory
 publish/
 
+# Dotnet publish output
+**/[Pp]ublish/
+
 # Publish Web Output
 *.[Pp]ublish.xml
 *.azurePubxml

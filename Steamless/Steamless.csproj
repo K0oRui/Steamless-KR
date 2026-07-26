@@ -6,9 +6,11 @@
     <AssemblyName>Steamless</AssemblyName>
     <UseWPF>true</UseWPF>
     <ApplicationIcon>Assets\steam.ico</ApplicationIcon>
-    <NoWarn>SYSLIB0021;CS0618</NoWarn>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <TargetFramework>net9.0-windows</TargetFramework>
+    <AssemblyVersion>3.1.0.5</AssemblyVersion>
+    <FileVersion>3.1.0.5</FileVersion>
+    <Description>Removes the SteamStub DRM protection from Steam applications.</Description>
   </PropertyGroup>
 
   <ItemGroup>
