@@ -4,12 +4,8 @@
 </div>
 
 <div align="center">
-    <a href="https://discord.gg/UmXNvjq"><img src="https://img.shields.io/discord/704822642846466096.svg?style=for-the-badge" alt="Discord server" /></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-CCA--NCND%20v4-blue?style=for-the-badge" alt="license" /></a>
-    <br/>
-    <a href="https://github.com/sponsors/atom0s/"><img src="https://img.shields.io/github/sponsors/atom0s?style=for-the-badge" alt="sponsors" /></a>
-    <a href="https://paypal.me/atom0s"><img src="https://img.shields.io/badge/donate-PayPal-blue?style=for-the-badge" alt="paypal" /></a>
-    <a href="https://patreon.com/atom0s"><img src="https://img.shields.io/badge/sponsor-Patreon-blue?style=for-the-badge" alt="paypal" /></a>
+    <a href="https://github.com/K0oRui/Steamless/actions/workflows/build.yml"><img src="https://img.shields.io/github/actions/workflow/status/K0oRui/Steamless/build.yml?style=for-the-badge&label=build" alt="build" /></a>
 </div>
 
 # Steamless
@@ -24,43 +20,37 @@
 > - **AesHelper modernization** — `AesCryptoServiceProvider` → `Aes.Create()`.
 > - **Async pattern cleanup** — removed `async void` methods; added `CancellationToken` support; `Thread.Sleep` → `Task.Delay`.
 > - **CLI improvements** — distinct exit codes (1-4); bare `catch {}` replaced with logged stderr output.
-> - **DataService sync-refactored** — interface methods are synchronous; UI thread offload handled at ViewModel level.
-> - **SplashView fixed** — removed binding to non-existent `FileName` property; shows `Text` and percentage progress.
-> - **GUI cleanup** — removed redundant `DataContext` from child views; deleted stale `App.config`.
-> - **Infrastructure added** — `.editorconfig` (code style), `.gitattributes` (line endings), `.gitignore` updates.
+> - **Infrastructure added** — `.editorconfig`, `.gitattributes`, `.gitignore`, `Directory.Build.props`, `global.json`.
+> - **Repo structure** — all source moved under `src/`, logo moved to `assets/`, stale files removed.
 >
 > ## Fixes
 > - **PE buffer underflow** — `GetStructure<T>` now checks `offset + size` instead of just `size`.
-> - **MemoryMarshal revert** — PE structs contain non-blittable `[MarshalAs(ByValArray)] ushort[]` fields that `MemoryMarshal.Read<T>` cannot handle. Reverted to `Marshal.PtrToStructure` (with `OffsetOf` caching retained).
+> - **MemoryMarshal revert** — PE structs contain non-blittable `[MarshalAs(ByValArray)] ushort[]` fields that `MemoryMarshal.Read<T>` cannot handle. Reverted to `Marshal.PtrToStructure`.
 > - **PlatformTarget fix** — all plugins now build as AnyCPU (MSIL) so they load in a 64-bit host process.
+> - **PE header offset corruption** — `Unsafe.SizeOf` returns wrong value for non-blittable DOS header structs, causing `DosStubSize` undercount and shifted PE signature. Fixed by using `Marshal.SizeOf` consistently.
+> - **FindPattern performance** — LINQ allocations on every byte + OOB crash risk. Replaced with plain nested loop and bounds check.
+> - **PE checksum algorithm** — existing `CheckSum` field not zeroed before computation. Fixed in `UpdateFileChecksum`.
+> - **GetSectionData OBO** — `>` instead of `>=` allowed accessing `Sections.Count` as a valid index.
 >
 > ## Variant 2.1
-> - **DRMP offset extraction with fallback chain** — if the hardcoded offset pattern fails, falls back to dynamic disassembly or exhaustive scan (`ScanSteamDrmpOffsets`) to locate valid DRMP offsets, fixing games where the original pattern doesn't match.
-> - **Code section decryption fix** — previously the stolen bytes were included in the AES-CBC decryption input, corrupting the output. Now only the encrypted payload is decrypted; stolen bytes are prepended afterward.
-> - **Import table reconstruction** — when `.bind` is removed, the import directory entry is relocated to the real descriptor table in `.rdata` via DLL name matching (`FindImportByDllNamePattern`). Fixes HUNTED, TCC, xrrengine.
-> - **Certificate table fix** — Authenticode Security directory file offset is updated to the new overlay position after `.bind` removal.
+> - **DRMP offset extraction with fallback chain** — if the hardcoded offset pattern fails, falls back to dynamic disassembly or exhaustive scan (`ScanSteamDrmpOffsets`) to locate valid DRMP offsets.
+> - **Code section decryption fix** — stolen bytes excluded from AES-CBC decryption; prepended afterward.
+> - **Import table reconstruction** — when `.bind` is removed, the import directory entry is relocated to the real descriptor table in `.rdata` via DLL name matching.
+> - **Certificate table fix** — Authenticode Security directory file offset updated to the new overlay position after `.bind` removal.
 >
-> ## Variant 3.0/3.1 — DRMP bounds clamping
-> `DRMPDllSize` clamped to file boundary with 8-byte alignment to prevent buffer over-read (fixes nw.exe).
->
-> ## Variant 3.1 — Code section decryption corrected
-> Stolen bytes and encrypted payload sized were mishandled. Now decrypts only the encrypted portion, then prepends stolen bytes at the correct offset.
+> ## Refactoring (all variants)
+> - Dead code removed across all unpackers: unused parameters, dead properties, stale string scanning loops.
+> - `FindImportDescriptorInRdata` signature cleaned up (removed unused `currentImport` parameter) — all 5 x86 variants.
+> - Variant 2.1: state properties changed from `public` to `private`; `TryGetSteamDrmpOffsets` removed; safe slicing with bounds checks.
+> - Variant 2.0: logic bug in `DisassembleFile` fixed (duplicated conditions → clean `if/else if`); dead payload properties removed.
+> - Variant 3.0 x64: `RebuildTlsCallbackInformation` optimized (LINQ → `Array.Copy`).
+> - Variant 3.1 x86: `CodeSectionIndex` guard added with error logging.
 >
 > Original upstream: [atom0s/Steamless](https://github.com/atom0s/Steamless)
 
 Steamless is a DRM remover of the various SteamStub variants applied to applications and games released on Steam via the DRM tool in the Steamworks SDK.
 
 Steamless aims to be a single solution for unpacking all variants of the SteamStub DRM, ranging from the very first version to the most recently released.
-
-_However, due to personal limited funds, I cannot test every game myself._
-
-# Donations
-
-Want to say thanks for my work on Steamless? Feel free to donate or sponsor me:
-
-  * **GitHub:** https://github.com/users/atom0s/sponsorship
-  * **Paypal:** https://www.paypal.me/atom0s
-  * **Patreon:** https://www.patreon.com/atom0s
 
 # What Steamless Will Do
 
@@ -93,7 +83,7 @@ From the Steamworks documentation:
 Steamless currently supports the following SteamStub DRM variants:
 
   * **SteamStub Variant 1**
-    * 32bit version is supported. _(Support for this is only tested with 1 file so far.)_
+    * 32bit version is supported.
   * **SteamStub Variant 2**
     * **v2.0.0**
       * 32bit version is supported.
@@ -113,7 +103,7 @@ Steamless currently supports the following SteamStub DRM variants:
       * 32bit version is supported.
       * 64bit version is supported.
 
-_**Note:** Version numbers are not 'real'. They are superficial and are simply assumed versions based on major changes to the DRM and what has been observed in the various submitted file samples. A better versioning system may come at a later date._
+_**Note:** Version numbers are not 'real'. They are superficial and are simply assumed versions based on major changes to the DRM and what has been observed in the various submitted file samples._
 
 # Legal
 
@@ -167,15 +157,10 @@ dotnet run --project .\src\Steamless -c Release
 - All plugin assemblies are AnyCPU (MSIL) — they load correctly in both 32-bit and 64-bit host processes.
 - The solution can be built from Visual Studio or the `dotnet` CLI.
 
-# Contributing To Steamless (Guidelines)
-
-I welcome and encourage contributions to the Steamless project. However, I do have some guidelines I wish for people to follow when doing so.
+# Contributing
 
   * Follow the `.editorconfig` conventions (4-space indentation, `m_` prefix for private fields, etc.).
   * Please do not introduce additional dependencies without a discussion before hand.
   * Please do not alter or remove any copyrights without a discussion prior.
   * Please do not hard code information specific to any one target. Steamless should be dynamic for all titles.
   * New code should be nullable-aware (`#nullable enable`). Existing files use `#nullable disable` and can be converted incrementally.
-
-Discussions can be opened within the Issue tracker here:
-  * https://github.com/atom0s/Steamless/issues
