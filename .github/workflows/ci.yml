@@ -33,13 +33,13 @@ jobs:
 
       - name: Build CLI + all plugin projects
         run: |
-          dotnet build Steamless.CLI -c Release --no-restore
-          dotnet build ExamplePlugin -c Release --no-restore
+          dotnet build src/Steamless.CLI -c Release --no-restore
+          dotnet build src/ExamplePlugin -c Release --no-restore
           for proj in Variant10.x86 Variant20.x86 Variant21.x86 Variant30.x86 Variant30.x64 Variant31.x86 Variant31.x64; do
             echo "Building Steamless.Unpacker.$proj..."
-            dotnet build "Steamless.Unpacker.$proj" -c Release --no-restore
+            dotnet build "src/Steamless.Unpacker.$proj" -c Release --no-restore
           done
 
       - name: Build GUI (Windows only)
         if: runner.os == 'Windows'
-        run: dotnet build Steamless/Steamless.csproj -c Release --no-restore
+        run: dotnet build src/Steamless/Steamless.csproj -c Release --no-restore
