@@ -1,9 +1,6 @@
 name: release
 
 on:
-  push:
-    branches:
-      - master
   workflow_dispatch:
     inputs:
       version:
@@ -111,7 +108,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: bash
         run: |
-          GUI_DIR="Steamless/bin/x86/Release/net9.0-windows"
+          GUI_DIR="Steamless/bin/Release/net9.0-windows"
           if [ -d "$GUI_DIR" ]; then
             echo "=== GUI output ==="
             ls -la "$GUI_DIR/" | head -20
