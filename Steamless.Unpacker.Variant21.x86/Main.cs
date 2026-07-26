@@ -1,4 +1,4 @@
-﻿#nullable disable
+#nullable disable
 
 /**
  * Steamless - Copyright (c) 2015 - 2024 atom0s [atom0s@live.com]
@@ -35,8 +35,7 @@ namespace Steamless.Unpacker.Variant21.x86
     using API.PE32;
     using API.Services;
     using Classes;
-    using SharpDisasm;
-    using SharpDisasm.Udis86;
+    using Iced.Intel;
     using System;
     using System.Collections.Generic;
     using System.IO;
@@ -343,7 +342,7 @@ namespace Steamless.Unpacker.Variant21.x86
             var flags = BitConverter.ToUInt32(this.PayloadData.Skip(offsets[0]).Take(4).ToArray(), 0);
             if ((flags & (uint)DrmFlags.NoEncryption) != (uint)DrmFlags.NoEncryption)
             {
-                // File is encrypted — validate encryption-related offsets..
+                // File is encrypted � validate encryption-related offsets..
                 if (offsets[4] < 0 || offsets[4] + 4 > this.PayloadData.Length)
                     return false;
                 if (offsets[5] < 0 || offsets[5] + 32 > this.PayloadData.Length)
@@ -391,7 +390,7 @@ namespace Steamless.Unpacker.Variant21.x86
                     }
                 }
 
-                // Hardcoded offsets failed — try the dynamic disassembler method on this data block..
+                // Hardcoded offsets failed � try the dynamic disassembler method on this data block..
                 var drmpOffsetData2 = new byte[1024];
                 Array.Copy(this.SteamDrmpData, drmpOffset, drmpOffsetData2, 0, 1024);
                 var dynOffsets = this.GetSteamDrmpOffsetsDynamic(drmpOffsetData2);
@@ -402,7 +401,7 @@ namespace Steamless.Unpacker.Variant21.x86
                     return true;
                 }
 
-                // Hardcoded and dynamic both failed for this pattern — try scanning for the correct layout..
+                // Hardcoded and dynamic both failed for this pattern � try scanning for the correct layout..
                 this.Log($" --> Scanning for correct offset layout in DRMP data block...", LogMessageType.Debug);
                 var foundOffsets = this.ScanSteamDrmpOffsets(this.SteamDrmpData, drmpOffset);
                 if (foundOffsets != null)
@@ -810,35 +809,23 @@ namespace Steamless.Unpacker.Variant21.x86
         /// <returns></returns>
         private bool DisassembleFile(out uint offset, out uint size, out uint xorKey)
         {
-            // Prepare our needed variables..
-            Disassembler disasm = null;
-            var dataPointer = IntPtr.Zero;
             uint structOffset = 0;
             uint structSize = 0;
             uint structXorKey = 0;
 
-            // Determine the entry offset of the file..
             var entryOffset = this.File.GetFileOffsetFromRva(this.File.NtHeaders.OptionalHeader.AddressOfEntryPoint);
 
             try
             {
-                // Copy the file data to memory for disassembling..
-                dataPointer = Marshal.AllocHGlobal(this.File.FileData.Length);
-                Marshal.Copy(this.File.FileData, 0, dataPointer, this.File.FileData.Length);
+                var reader = new ByteArrayCodeReader(this.File.FileData, (int)entryOffset, Math.Min(4096, this.File.FileData.Length - (int)entryOffset));
+                var decoder = Decoder.Create(32, reader);
+                decoder.IP = (ulong)entryOffset;
+                var endRip = decoder.IP + 4096;
 
-                // Create an offset pointer to our .bind function start..
-                var startPointer = IntPtr.Add(dataPointer, (int)entryOffset);
-
-                // Create the disassembler..
-                Disassembler.Translator.IncludeAddress = true;
-                Disassembler.Translator.IncludeBinary = true;
-
-                disasm = new Disassembler(startPointer, 4096, ArchitectureMode.x86_32, entryOffset);
-
-                // Disassemble our function..
-                foreach (var inst in disasm.Disassemble().Where(inst => !inst.Error))
+                while (decoder.IP < endRip && reader.CanReadByte)
                 {
-                    // If all values are found, return successfully..
+                    var inst = decoder.Decode();
+
                     if (structOffset > 0 && structSize > 0 && structXorKey > 0)
                     {
                         offset = structOffset;
@@ -848,17 +835,17 @@ namespace Steamless.Unpacker.Variant21.x86
                     }
 
                     // Looks for: mov dword ptr [value], immediate
-                    if (inst.Mnemonic == ud_mnemonic_code.UD_Imov && inst.Operands[0].Type == ud_type.UD_OP_MEM && inst.Operands[1].Type == ud_type.UD_OP_IMM)
+                    if (inst.Op0Kind == OpKind.Memory && IsImmediate32(inst.Op1Kind))
                     {
                         if (structOffset == 0)
-                            structOffset = inst.Operands[1].LvalUDWord - this.File.NtHeaders.OptionalHeader.ImageBase;
+                            structOffset = inst.Immediate32 - this.File.NtHeaders.OptionalHeader.ImageBase;
                         else
-                            structXorKey = inst.Operands[1].LvalUDWord;
+                            structXorKey = inst.Immediate32;
                     }
 
                     // Looks for: mov reg, immediate
-                    if (inst.Mnemonic == ud_mnemonic_code.UD_Imov && inst.Operands[0].Type == ud_type.UD_OP_REG && inst.Operands[1].Type == ud_type.UD_OP_IMM)
-                        structSize = inst.Operands[1].LvalUDWord * 4;
+                    if (inst.Op0Kind == OpKind.Register && IsImmediate32(inst.Op1Kind))
+                        structSize = inst.Immediate32 * 4;
                 }
 
                 offset = size = xorKey = 0;
@@ -868,12 +855,6 @@ namespace Steamless.Unpacker.Variant21.x86
             {
                 offset = size = xorKey = 0;
                 return false;
-            }
-            finally
-            {
-                disasm?.Dispose();
-                if (dataPointer != IntPtr.Zero)
-                    Marshal.FreeHGlobal(dataPointer);
             }
         }
 
@@ -916,7 +897,6 @@ namespace Steamless.Unpacker.Variant21.x86
         /// <returns></returns>
         private List<int> GetSteamDrmpOffsetsDynamic(byte[] data)
         {
-            Disassembler disasm = null;
             var offsets = new List<int>();
             var count = 0;
 
@@ -935,36 +915,32 @@ namespace Steamless.Unpacker.Variant21.x86
             try
             {
                 var skipMov = false;
+                var reader = new ByteArrayCodeReader(data);
+                var decoder = Decoder.Create(32, reader);
+                var endRip = decoder.IP + (uint)data.Length;
 
-                // Disassemble the incoming block of data to look for the needed offsets dynamically..
-                disasm = new Disassembler(data, ArchitectureMode.x86_32);
-                foreach (var inst in disasm.Disassemble().Where(inst => !inst.Error))
+                while (decoder.IP < endRip && reader.CanReadByte)
                 {
                     if (count >= 8)
                         break;
 
+                    var inst = decoder.Decode();
+
                     // ex: mov eax, [eax+1234]
-                    if (!skipMov && inst.Mnemonic == ud_mnemonic_code.UD_Imov)
+                    if (!skipMov && inst.Op0Kind == OpKind.Register && inst.Op1Kind == OpKind.Memory)
                     {
-                        if (inst.Operands.Length >= 2
-                            && inst.Operands[0].Type == ud_type.UD_OP_REG
-                            && inst.Operands[1].Type == ud_type.UD_OP_MEM)
-                        {
-                            count++;
-                            offsets.Add(inst.Operands[1].LvalSDWord);
-                        }
+                        count++;
+                        offsets.Add((int)inst.MemoryDisplacement32);
                     }
 
                     // ex: lea eax, [eax+1234]
-                    if (inst.Mnemonic == ud_mnemonic_code.UD_Ilea)
+                    if (inst.Code == Code.Lea_r32_m)
                     {
-                        if (inst.Operands.Length >= 2
-                            && inst.Operands[0].Type == ud_type.UD_OP_REG
-                            && inst.Operands[1].Type == ud_type.UD_OP_MEM)
+                        if (inst.Op0Kind == OpKind.Register && inst.Op1Kind == OpKind.Memory)
                         {
                             count += 2;
-                            offsets.Add(inst.Operands[1].LvalSDWord);
-                            offsets.Add(inst.Operands[1].LvalSDWord + 16);
+                            offsets.Add((int)inst.MemoryDisplacement32);
+                            offsets.Add((int)inst.MemoryDisplacement32 + 16);
 
                             /**
                              * Some v2 compiled files have the order of the last offset (add inst) after a mov which loads
@@ -976,15 +952,10 @@ namespace Steamless.Unpacker.Variant21.x86
                     }
 
                     // ex: add eax, 1234
-                    if (inst.Mnemonic == ud_mnemonic_code.UD_Iadd)
+                    if (inst.Op0Kind == OpKind.Register && IsImmediate32(inst.Op1Kind))
                     {
-                        if (inst.Operands.Length >= 2
-                            && inst.Operands[0].Type == ud_type.UD_OP_REG
-                            && inst.Operands[1].Type == ud_type.UD_OP_IMM)
-                        {
-                            count++;
-                            offsets.Add(inst.Operands[1].LvalSDWord);
-                        }
+                        count++;
+                        offsets.Add((int)inst.Immediate32);
                     }
                 }
 
@@ -993,10 +964,6 @@ namespace Steamless.Unpacker.Variant21.x86
             catch
             {
                 return new List<int>();
-            }
-            finally
-            {
-                disasm?.Dispose();
             }
         }
 
@@ -1064,5 +1031,8 @@ namespace Steamless.Unpacker.Variant21.x86
         /// Gets or sets the .bind section virtual size.
         /// </summary>
         private uint BindSectionSize { get; set; }
+
+        private static bool IsImmediate32(OpKind kind) =>
+            kind == OpKind.Immediate32 || kind == OpKind.Immediate8to32;
     }
 }

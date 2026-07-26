@@ -91,12 +91,12 @@ jobs:
             fi
           done
 
-          echo "=== SharpDisasm ==="
-          SHARP=$(find . -path '*/Release/net9.0/SharpDisasm.dll' -print -quit)
-          if [ -n "$SHARP" ]; then
-            cp "$SHARP" dist/Plugins/
+          echo "=== Iced ==="
+          ICED=$(find . -path '*/Release/net9.0/Iced.dll' -print -quit)
+          if [ -n "$ICED" ]; then
+            cp "$ICED" dist/Plugins/
           else
-            echo "  SharpDisasm.dll not found"
+            echo "  Iced.dll not found"
           fi
 
           echo "=== ExamplePlugin ==="

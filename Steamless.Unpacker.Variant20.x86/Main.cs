@@ -1,4 +1,4 @@
-﻿#nullable disable
+#nullable disable
 
 /**
  * Steamless - Copyright (c) 2015 - 2024 atom0s [atom0s@live.com]
@@ -34,14 +34,12 @@ namespace Steamless.Unpacker.Variant20.x86
     using API.PE32;
     using API.Services;
     using Classes;
-    using SharpDisasm;
-    using SharpDisasm.Udis86;
+    using Iced.Intel;
     using System;
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
     using System.Reflection;
-    using System.Runtime.InteropServices;
 
     [SteamlessApiVersion(1, 0)]
     public class Main : SteamlessPlugin
@@ -556,35 +554,23 @@ namespace Steamless.Unpacker.Variant20.x86
         /// <returns></returns>
         private bool DisassembleFile(out uint offset, out uint size, out uint xorKey)
         {
-            // Prepare our needed variables..
-            Disassembler disasm = null;
-            var dataPointer = IntPtr.Zero;
             uint structOffset = 0;
             uint structSize = 0;
             uint structXorKey = 0;
 
-            // Determine the entry offset of the file..
             var entryOffset = this.File.GetFileOffsetFromRva(this.File.NtHeaders.OptionalHeader.AddressOfEntryPoint);
 
             try
             {
-                // Copy the file data to memory for disassembling..
-                dataPointer = Marshal.AllocHGlobal(this.File.FileData.Length);
-                Marshal.Copy(this.File.FileData, 0, dataPointer, this.File.FileData.Length);
+                var reader = new ByteArrayCodeReader(this.File.FileData, (int)entryOffset, Math.Min(4096, this.File.FileData.Length - (int)entryOffset));
+                var decoder = Decoder.Create(32, reader);
+                decoder.IP = (ulong)entryOffset;
+                var endRip = decoder.IP + 4096;
 
-                // Create an offset pointer to our .bind function start..
-                var startPointer = IntPtr.Add(dataPointer, (int)entryOffset);
-
-                // Create the disassembler..
-                Disassembler.Translator.IncludeAddress = true;
-                Disassembler.Translator.IncludeBinary = true;
-
-                disasm = new Disassembler(startPointer, 4096, ArchitectureMode.x86_32, entryOffset);
-
-                // Disassemble our function..
-                foreach (var inst in disasm.Disassemble().Where(inst => !inst.Error))
+                while (decoder.IP < endRip && reader.CanReadByte)
                 {
-                    // If all values are found, return successfully..
+                    var inst = decoder.Decode();
+
                     if (structOffset > 0 && structSize > 0 && structXorKey > 0)
                     {
                         offset = structOffset;
@@ -594,19 +580,19 @@ namespace Steamless.Unpacker.Variant20.x86
                     }
 
                     // Looks for: mov reg, immediate
-                    if (inst.Mnemonic == ud_mnemonic_code.UD_Imov && inst.Operands[0].Type == ud_type.UD_OP_REG && inst.Operands[1].Type == ud_type.UD_OP_IMM)
+                    if (inst.Op0Kind == OpKind.Register && IsImmediate32(inst.Op1Kind))
                     {
                         if (structOffset == 0)
                         {
-                            structOffset = inst.Operands[1].LvalUDWord - this.File.NtHeaders.OptionalHeader.ImageBase;
+                            structOffset = inst.Immediate32 - this.File.NtHeaders.OptionalHeader.ImageBase;
                             continue;
                         }
                     }
 
                     // Looks for: mov reg, immediate
-                    if (inst.Mnemonic == ud_mnemonic_code.UD_Imov && inst.Operands[0].Type == ud_type.UD_OP_REG && inst.Operands[1].Type == ud_type.UD_OP_IMM)
+                    if (inst.Op0Kind == OpKind.Register && IsImmediate32(inst.Op1Kind))
                     {
-                        structSize = inst.Operands[1].LvalUDWord * 4;
+                        structSize = inst.Immediate32 * 4;
                         structXorKey = 1;
                     }
                 }
@@ -619,13 +605,10 @@ namespace Steamless.Unpacker.Variant20.x86
                 offset = size = xorKey = 0;
                 return false;
             }
-            finally
-            {
-                disasm?.Dispose();
-                if (dataPointer != IntPtr.Zero)
-                    Marshal.FreeHGlobal(dataPointer);
-            }
         }
+
+        private static bool IsImmediate32(OpKind kind) =>
+            kind == OpKind.Immediate32 || kind == OpKind.Immediate8to32;
 
         /// <summary>
         /// Gets or sets the Steamless options this file was requested to process with.
