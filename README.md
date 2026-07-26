@@ -1,5 +1,5 @@
 <div align="center">
-    <img width="200" src="https://github.com/atom0s/Steamless/raw/master/repo/steamless.png" alt="steamless">
+    <img width="200" src="assets/steamless.png" alt="steamless">
     </br>
 </div>
 
@@ -156,14 +156,14 @@ You can find his information here: http://pcgamingwiki.com/wiki/User:Cyanic/Stea
 dotnet build Steamless.sln -c Release
 
 # Run CLI
-dotnet run --project .\Steamless.CLI -c Release -- <options>
+dotnet run --project .\src\Steamless.CLI -c Release -- <options>
 
 # Run GUI
-dotnet run --project .\Steamless -c Release
+dotnet run --project .\src\Steamless -c Release
 ```
 
 **Notes:**
-- Plugin DLLs are loaded dynamically from `Plugins/` at runtime. After building, copy the plugin DLLs and `Iced.dll` (for Variant 2.x) into the output `Plugins/` folder, or use the provided CI scripts.
+- Source code is under `src/`. All plugin DLLs are loaded dynamically from `Plugins/` at runtime. After building, copy the plugin DLLs and `Iced.dll` (for Variant 2.x) into the output `Plugins/` folder, or use the provided CI scripts.
 - All plugin assemblies are AnyCPU (MSIL) — they load correctly in both 32-bit and 64-bit host processes.
 - The solution can be built from Visual Studio or the `dotnet` CLI.
 

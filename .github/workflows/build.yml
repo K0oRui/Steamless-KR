@@ -52,21 +52,21 @@ jobs:
 
       - name: Build CLI + all plugin projects
         run: |
-          dotnet build Steamless.CLI -c Release --no-restore
-          dotnet build ExamplePlugin -c Release --no-restore
+          dotnet build src/Steamless.CLI -c Release --no-restore
+          dotnet build src/ExamplePlugin -c Release --no-restore
           for proj in Variant10.x86 Variant20.x86 Variant21.x86 Variant30.x86 Variant30.x64 Variant31.x86 Variant31.x64; do
             echo "Building Steamless.Unpacker.$proj..."
-            dotnet build "Steamless.Unpacker.$proj" -c Release --no-restore
+            dotnet build "src/Steamless.Unpacker.$proj" -c Release --no-restore
           done
 
       - name: Build GUI (Windows only)
         if: runner.os == 'Windows'
-        run: dotnet build Steamless/Steamless.csproj -c Release --no-restore
+        run: dotnet build src/Steamless/Steamless.csproj -c Release --no-restore
 
       - name: Stage artifacts
         shell: bash
         run: |
-          CLI_DIR="Steamless.CLI/bin/Release/net9.0"
+          CLI_DIR="src/Steamless.CLI/bin/Release/net9.0"
           mkdir -p dist/Plugins
 
           echo "=== CLI output ==="
@@ -79,7 +79,7 @@ jobs:
 
           echo "=== Plugin DLLs ==="
           for proj in Variant10.x86 Variant20.x86 Variant21.x86 Variant30.x86 Variant30.x64 Variant31.x86 Variant31.x64; do
-            dll="Steamless.Unpacker.$proj/bin/Release/net9.0/Steamless.Unpacker.$proj.dll"
+            dll="src/Steamless.Unpacker.$proj/bin/Release/net9.0/Steamless.Unpacker.$proj.dll"
             if [ -f "$dll" ]; then
               cp "$dll" dist/Plugins/
               echo "  Copied: $proj"
@@ -97,7 +97,7 @@ jobs:
           fi
 
           echo "=== ExamplePlugin ==="
-          EXAMPLE="ExamplePlugin/bin/Release/net9.0/ExamplePlugin.dll"
+          EXAMPLE="src/ExamplePlugin/bin/Release/net9.0/ExamplePlugin.dll"
           if [ -f "$EXAMPLE" ]; then
             cp "$EXAMPLE" dist/Plugins/
           else
@@ -108,7 +108,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: bash
         run: |
-          GUI_DIR="Steamless/bin/Release/net9.0-windows"
+          GUI_DIR="src/Steamless/bin/Release/net9.0-windows"
           if [ -d "$GUI_DIR" ]; then
             echo "=== GUI output ==="
             ls -la "$GUI_DIR/" | head -20
