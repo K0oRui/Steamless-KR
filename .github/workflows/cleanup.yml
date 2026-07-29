@@ -1,0 +1,38 @@
+name: cleanup
+
+on:
+  workflow_run:
+    workflows: ["quality", "release"]
+    types: [completed]
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Purge old workflow runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          REPO="${{ github.repository }}"
+          for workflow in $(gh api "/repos/$REPO/actions/workflows" --jq '.workflows[].id'); do
+            count=$(gh api "/repos/$REPO/actions/workflows/$workflow/runs?per_page=1" --jq '.total_count')
+            [ "$count" -le 1 ] && continue
+            gh api "/repos/$REPO/actions/workflows/$workflow/runs?per_page=100" --jq '.workflow_runs' \
+              | jq -r 'sort_by(.run_number) | reverse | .[1:] | .[].id' \
+              | xargs -r -I{} gh api -X DELETE "/repos/$REPO/actions/runs/{}"
+          done
+
+      - name: Purge old caches
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          REPO="${{ github.repository }}"
+          gh api "/repos/$REPO/actions/caches?per_page=100" --jq '.actions_caches[] | "\(.id) \(.last_accessed_at)"' \
+            | sort -k2 -r \
+            | tail -n +2 \
+            | awk '{print $1}' \
+            | xargs -r -I{} gh api -X DELETE "/repos/$REPO/actions/caches/{}"
