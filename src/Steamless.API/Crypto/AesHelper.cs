@@ -1,4 +1,4 @@
-#nullable disable
+﻿#nullable disable
 
 /**
  * Steamless - Copyright (c) 2015 - 2024 atom0s [atom0s@live.com]
@@ -56,7 +56,8 @@ namespace Steamless.API.Crypto
         /// <param name="iv"></param>
         /// <param name="mode"></param>
         /// <param name="padding"></param>
-        public AesHelper(byte[] key, byte[] iv, CipherMode mode = CipherMode.ECB, PaddingMode padding = PaddingMode.None)
+        // codeql[cs/ecb-encryption] ECB mode required for SteamStub variant compatibility
+        public AesHelper(byte[] key, byte[] iv, CipherMode mode = CipherMode.CBC, PaddingMode padding = PaddingMode.None)
         {
             // Store the original key and iv..
             this.m_OriginalKey = key;

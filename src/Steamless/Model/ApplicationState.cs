@@ -1,4 +1,4 @@
-#nullable disable
+﻿#nullable disable
 
 /**
  * Steamless - Copyright (c) 2015 - 2024 atom0s [atom0s@live.com]
@@ -42,7 +42,7 @@ namespace Steamless.Model
         /// The state when the application is done initializing and is running.
         /// </summary>
         Running,
-        
+
         /// <summary>
         /// Closing
         /// 
