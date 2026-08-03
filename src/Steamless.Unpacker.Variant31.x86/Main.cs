@@ -418,23 +418,18 @@ namespace Steamless.Unpacker.Variant31.x86
                 this.Log($" --> {codeSection.SectionName} section is encrypted.", LogMessageType.Debug);
 
                 // Obtain the code section data..
-                var encryptedSize = (long)this.StubHeader.CodeSectionRawSize - this.StubHeader.CodeSectionStolenData.Length;
-                var encryptedData = new byte[encryptedSize];
-                Array.Copy(this.File.FileData, this.File.GetFileOffsetFromRva(codeSection.VirtualAddress), encryptedData, 0, encryptedSize);
+                var codeSectionData = new byte[(long)this.StubHeader.CodeSectionRawSize + this.StubHeader.CodeSectionStolenData.Length];
+                Array.Copy(this.StubHeader.CodeSectionStolenData, 0, codeSectionData, 0, this.StubHeader.CodeSectionStolenData.Length);
+                Array.Copy(this.File.FileData, this.File.GetFileOffsetFromRva(codeSection.VirtualAddress), codeSectionData, this.StubHeader.CodeSectionStolenData.Length, (long)this.StubHeader.CodeSectionRawSize);
 
                 // Create the AES decryption helper..
                 var aes = new AesHelper(this.StubHeader.AES_Key, this.StubHeader.AES_IV);
                 aes.RebuildIv(this.StubHeader.AES_IV);
 
                 // Decrypt the code section data..
-                var decryptedData = aes.Decrypt(encryptedData, CipherMode.CBC, PaddingMode.None);
-                if (decryptedData == null)
+                var data = aes.Decrypt(codeSectionData, CipherMode.CBC, PaddingMode.None);
+                if (data == null)
                     return false;
-
-                // Prepend the stolen bytes to restore the full original section data..
-                var data = new byte[this.StubHeader.CodeSectionStolenData.Length + decryptedData.Length];
-                Array.Copy(this.StubHeader.CodeSectionStolenData, 0, data, 0, this.StubHeader.CodeSectionStolenData.Length);
-                Array.Copy(decryptedData, 0, data, this.StubHeader.CodeSectionStolenData.Length, decryptedData.Length);
 
                 // Merge the code section data into the original..
                 if (this.CodeSectionIndex < 0)
@@ -444,7 +439,7 @@ namespace Steamless.Unpacker.Variant31.x86
                 }
 
                 var sectionData = this.File.SectionData[this.CodeSectionIndex];
-                var copySize = Math.Min(data.Length, sectionData.Length);
+                var copySize = Math.Min((long)this.StubHeader.CodeSectionRawSize, sectionData.Length);
                 Array.Copy(data, sectionData, copySize);
                 this.CodeSectionData = sectionData;
 

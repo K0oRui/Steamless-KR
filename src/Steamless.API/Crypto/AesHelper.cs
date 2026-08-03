@@ -57,7 +57,7 @@ namespace Steamless.API.Crypto
         /// <param name="mode"></param>
         /// <param name="padding"></param>
         // codeql[cs/ecb-encryption] ECB mode required for SteamStub variant compatibility
-        public AesHelper(byte[] key, byte[] iv, CipherMode mode = CipherMode.CBC, PaddingMode padding = PaddingMode.None)
+        public AesHelper(byte[] key, byte[] iv, CipherMode mode = CipherMode.ECB, PaddingMode padding = PaddingMode.None)
         {
             // Store the original key and iv..
             this.m_OriginalKey = key;

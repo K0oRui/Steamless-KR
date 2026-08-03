@@ -546,19 +546,15 @@ namespace Steamless.Unpacker.Variant21.x86
                         return false;
                     }
 
-                    // Read the encrypted section data from the file..
-                    var encryptedData = new byte[encryptedSize];
-                    Array.Copy(this.File.FileData, this.File.GetFileOffsetFromRva(mainSection.VirtualAddress), encryptedData, 0, encryptedSize);
+                    // Restore the stolen data then read the rest of the section data..
+                    codeSectionData = new byte[encryptedSize + codeStolen.Length];
+                    Array.Copy(codeStolen, 0, codeSectionData, 0, codeStolen.Length);
+                    Array.Copy(this.File.FileData, this.File.GetFileOffsetFromRva(mainSection.VirtualAddress), codeSectionData, codeStolen.Length, encryptedSize);
 
-                    // Decrypt the code section data using AES-CBC..
+                    // Decrypt the code section..
                     var aes = new AesHelper(aesKey, aesIv);
                     aes.RebuildIv(aesIv);
-                    var decryptedData = aes.Decrypt(encryptedData, CipherMode.CBC, PaddingMode.None);
-
-                    // Prepend the stolen bytes to restore the full original section data..
-                    codeSectionData = new byte[codeStolen.Length + decryptedData.Length];
-                    Array.Copy(codeStolen, 0, codeSectionData, 0, codeStolen.Length);
-                    Array.Copy(decryptedData, 0, codeSectionData, codeStolen.Length, decryptedData.Length);
+                    codeSectionData = aes.Decrypt(codeSectionData, CipherMode.CBC, PaddingMode.None);
                 }
                 catch
                 {
@@ -574,8 +570,7 @@ namespace Steamless.Unpacker.Variant21.x86
             }
 
             var sectionData = this.File.SectionData[this.CodeSectionIndex];
-            var copySize = Math.Min(codeSectionData.Length, sectionData.Length);
-            Array.Copy(codeSectionData, sectionData, copySize);
+            Array.Copy(codeSectionData, sectionData, encryptedSize);
             this.CodeSectionData = sectionData;
 
             return true;
