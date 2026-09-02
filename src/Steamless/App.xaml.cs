@@ -34,14 +34,8 @@ namespace Steamless
     using System;
     using ViewModel;
 
-    /// <summary>
-    /// Interaction logic for App.xaml
-    /// </summary>
     public partial class App
     {
-        /// <summary>
-        /// Global DI service provider. Built once at startup.
-        /// </summary>
         public static IServiceProvider Services { get; private set; }
 
         public App()

@@ -1,4 +1,4 @@
-﻿#nullable disable
+#nullable disable
 
 /**
  * Steamless - Copyright (c) 2015 - 2024 atom0s [atom0s@live.com]
@@ -25,26 +25,21 @@
  * No warranties are given.
  */
 
-namespace Steamless.API.Events
+namespace Steamless.Unpacker.Variant20.x86.Classes
 {
-    using System;
-
-    public class LogMessageEventArgs : EventArgs
+    /// <summary>
+    /// Common properties shared by all SteamStub 32-bit Variant 2.0 header sizes (856, 884, 952).
+    /// </summary>
+    public interface ISteamStub32Var20Header
     {
-        public LogMessageEventArgs()
-        {
-            this.Message = string.Empty;
-            this.MessageType = LogMessageType.Debug;
-        }
+        uint Flags { get; }
 
-        public LogMessageEventArgs(string msg, LogMessageType type)
-        {
-            this.Message = msg;
-            this.MessageType = type;
-        }
+        uint OEP { get; }
 
-        public string Message { get; set; }
+        uint CodeSectionVirtualAddress { get; }
 
-        public LogMessageType MessageType { get; set; }
+        uint CodeSectionSize { get; }
+
+        uint CodeSectionXorKey { get; }
     }
 }

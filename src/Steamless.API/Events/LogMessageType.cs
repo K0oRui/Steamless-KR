@@ -27,34 +27,12 @@
 
 namespace Steamless.API.Events
 {
-    /// <summary>
-    /// Log Message Type Enumeration
-    /// </summary>
     public enum LogMessageType
     {
-        /// <summary>
-        /// Used for general purpose messages.
-        /// </summary>
         Information = 0,
-
-        /// <summary>
-        /// Used for successful messages.
-        /// </summary>
         Success = 1,
-
-        /// <summary>
-        /// Used for warnings.
-        /// </summary>
         Warning = 2,
-
-        /// <summary>
-        /// Used for errors.
-        /// </summary>
         Error = 3,
-
-        /// <summary>
-        /// Used for debug messages.
-        /// </summary>
         Debug = 4
     }
 }

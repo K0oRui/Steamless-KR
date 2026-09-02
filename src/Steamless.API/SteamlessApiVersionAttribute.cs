@@ -32,19 +32,11 @@ namespace Steamless.API
     [AttributeUsage(AttributeTargets.Class, Inherited = false)]
     public class SteamlessApiVersionAttribute : Attribute
     {
-        /// <summary>
-        /// Default Constructor
-        /// </summary>
-        /// <param name="major"></param>
-        /// <param name="minor"></param>
         public SteamlessApiVersionAttribute(int major, int minor)
         {
             this.Version = new Version(major, minor);
         }
 
-        /// <summary>
-        /// Gets or sets the API version of this attribute.
-        /// </summary>
         public Version Version { get; internal set; }
     }
 }

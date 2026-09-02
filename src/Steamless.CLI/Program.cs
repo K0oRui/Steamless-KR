@@ -39,16 +39,9 @@ namespace Steamless.CLI
 
     internal class Program
     {
-        /// <summary>
-        /// Steamless API Version
-        /// 
-        /// Main define for this is within DataService.cs and should match that value.
-        /// </summary>
+        // Must match the API version defined in DataService.cs.
         private static readonly Version SteamlessApiVersion = new Version(1, 0);
 
-        /// <summary>
-        /// Prints the Steamless header information.
-        /// </summary>
         static void PrintHeader()
         {
             Console.WriteLine("  _________ __                        .__                        ");
@@ -66,9 +59,6 @@ namespace Steamless.CLI
             Console.WriteLine("Donations : https://patreon.com/atom0s\n");
         }
 
-        /// <summary>
-        /// Prints the Steamless command line help information.
-        /// </summary>
         static void PrintHelp()
         {
             Console.WriteLine("Usage:");
@@ -84,48 +74,35 @@ namespace Steamless.CLI
             Console.WriteLine("    --exp            - Use experimental features.");
         }
 
-        /// <summary>
-        /// Obtains a list of available Steamless plugins.
-        /// </summary>
-        /// <returns></returns>
         static List<SteamlessPlugin> GetSteamlessPlugins(LoggingService logService)
         {
             try
             {
-                // The list of valid plugins..
                 var plugins = new List<SteamlessPlugin>();
 
-                // Build a path to the plugins folder..
                 var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Plugins");
-
-                // Loop the DLL files and attempt to load them..
                 foreach (var dll in Directory.GetFiles(path, "*.dll"))
                 {
-                    // Skip the Steamless.API.dll file..
-                    if (dll.ToLower().Contains("steamless.api.dll"))
+                    // The API assembly is not a plugin; skip it.
+                    if (dll.EndsWith("steamless.api.dll", StringComparison.OrdinalIgnoreCase))
                         continue;
 
                     try
                     {
-                        // Load the assembly..
                         var asm = Assembly.Load(File.ReadAllBytes(dll));
 
-                        // Locate the class inheriting the plugin base..
-                        var baseClass = asm.GetTypes().SingleOrDefault(t => t.BaseType == typeof(SteamlessPlugin));
+                        var baseClass = asm.GetTypes().FirstOrDefault(t => t.BaseType == typeof(SteamlessPlugin));
                         if (baseClass == null)
                             continue;
 
-                        // Locate the SteamlessApiVersion attribute on the base class..
                         var baseAttr = baseClass.GetCustomAttributes(typeof(SteamlessApiVersionAttribute), false);
                         if (baseAttr.Length == 0)
                             continue;
 
-                        // Validate the interface version..
                         var apiVersion = (SteamlessApiVersionAttribute)baseAttr[0];
                         if (apiVersion.Version != SteamlessApiVersion)
                             continue;
 
-                        // Create an instance of the plugin..
                         var plugin = (SteamlessPlugin)Activator.CreateInstance(baseClass);
                         if (!plugin.Initialize(logService))
                             continue;
@@ -138,7 +115,6 @@ namespace Steamless.CLI
                     }
                 }
 
-                // Order the plugins by their name..
                 return plugins.OrderBy(p => p.Name).ToList();
             }
             catch (Exception ex)
@@ -148,29 +124,22 @@ namespace Steamless.CLI
             }
         }
 
-        /// <summary>
-        /// Application entry point.
-        /// </summary>
-        /// <param name="args"></param>
         static int Main(string[] args)
         {
-            // AssemblyResolve override to load modules from the Plugins folder..
+            // AssemblyResolve override so plugin dependencies can be loaded from the Plugins folder.
             AppDomain.CurrentDomain.AssemblyResolve += (sender, e) =>
             {
                 try
                 {
-                    // Obtain the name of the assembly being loaded..
                     var name = e.Name.Contains(",") ? e.Name.Substring(0, e.Name.IndexOf(",", StringComparison.InvariantCultureIgnoreCase)) : e.Name.Replace(".dll", "");
 
-                    // Ignore resource assembly loading..
-                    if (name.ToLower().EndsWith(".resources"))
+                    // Satellite resource assemblies are not plugin dependencies.
+                    if (name.EndsWith(".resources", StringComparison.OrdinalIgnoreCase))
                         return null;
 
-                    // Build a full path to the possible embedded file..
                     var fullName = $"{Assembly.GetExecutingAssembly().EntryPoint.DeclaringType?.Namespace}.Embedded.{new AssemblyName(e.Name).Name}.dll";
                     using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(fullName))
                     {
-                        // If not embedded try to load from the plugin folder..
                         if (stream == null)
                         {
                             var f = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Plugins", name + ".dll");
@@ -179,7 +148,6 @@ namespace Steamless.CLI
                             return Assembly.Load(File.ReadAllBytes(f));
                         }
 
-                        // Read and load the embedded resource..
                         var data = new byte[stream.Length];
                         stream.ReadExactly(data, 0, (int)stream.Length);
                         return Assembly.Load(data);
@@ -195,18 +163,13 @@ namespace Steamless.CLI
             return Program.Run(args);
         }
 
-        /// <summary>
-        /// Runs the Steamless command line operations.
-        /// </summary>
-        /// <param name="args"></param>
-        /// <returns></returns>
         static int Run(string[] args)
         {
             var logService = new LoggingService();
             var opts = new SteamlessOptions();
             var file = string.Empty;
+            var fileSpecified = false;
 
-            // Prepare the logging service..
             logService.AddLogMessage += (sender, e) =>
             {
                 if (!opts.VerboseOutput && e.MessageType == LogMessageType.Debug)
@@ -227,70 +190,82 @@ namespace Steamless.CLI
                 Console.WriteLine(e.Message);
             };
 
-            // Print the program header..
             Program.PrintHeader();
 
-            // Process command line arguments for the various Steamless options..
             foreach (var arg in args)
             {
-                if (arg.ToLower() == "--quiet")
+                if (string.Equals(arg, "--quiet", StringComparison.OrdinalIgnoreCase))
                     opts.VerboseOutput = false;
-                if (arg.ToLower() == "--keepbind")
+                else if (string.Equals(arg, "--keepbind", StringComparison.OrdinalIgnoreCase))
                     opts.KeepBindSection = true;
-                if (arg.ToLower() == "--keepstub")
+                else if (string.Equals(arg, "--keepstub", StringComparison.OrdinalIgnoreCase))
                     opts.ZeroDosStubData = false;
-                if (arg.ToLower() == "--dumppayload")
+                else if (string.Equals(arg, "--dumppayload", StringComparison.OrdinalIgnoreCase))
                     opts.DumpPayloadToDisk = true;
-                if (arg.ToLower() == "--dumpdrmp")
+                else if (string.Equals(arg, "--dumpdrmp", StringComparison.OrdinalIgnoreCase))
                     opts.DumpSteamDrmpToDisk = true;
-                if (arg.ToLower() == "--realign")
+                else if (string.Equals(arg, "--realign", StringComparison.OrdinalIgnoreCase))
                     opts.DontRealignSections = false;
-                if (arg.ToLower() == "--recalcchecksum")
+                else if (string.Equals(arg, "--recalcchecksum", StringComparison.OrdinalIgnoreCase))
                     opts.RecalculateFileChecksum = true;
-                if (arg.ToLower() == "--exp")
+                else if (string.Equals(arg, "--exp", StringComparison.OrdinalIgnoreCase))
                     opts.UseExperimentalFeatures = true;
-                if (!arg.StartsWith("--"))
+                else if (!arg.StartsWith("--"))
+                {
+                    if (fileSpecified)
+                    {
+                        Console.Error.WriteLine("Steamless.CLI: multiple input files specified; only one is allowed.");
+                        return 1;
+                    }
+
                     file = arg;
+                    fileSpecified = true;
+                }
             }
 
-            // Ensure an input file was given..
             if (string.IsNullOrEmpty(file))
             {
                 Program.PrintHelp();
                 return 1; // No input file
             }
 
-            // Ensure the input file exists..
             if (!File.Exists(file))
             {
                 logService.OnAddLogMessage(null, new LogMessageEventArgs("Invalid input file given; cannot continue.", LogMessageType.Error));
                 return 2; // File not found
             }
 
-            // Collect the list of available plugins..
             var plugins = GetSteamlessPlugins(logService);
             plugins.ForEach(p => logService.OnAddLogMessage(null, new LogMessageEventArgs($"Loaded plugin: {p.Name} - by {p.Author} (v.{p.Version})", LogMessageType.Success)));
 
-            // Ensure plugins were found and loaded..
             if (plugins.Count == 0)
             {
                 logService.OnAddLogMessage(null, new LogMessageEventArgs("No plugins were loaded; be sure to fully extract Steamless before running!", LogMessageType.Error));
                 return 3; // No plugins loaded
             }
 
-            // Loop through the plugins and try to unpack the file..
             foreach (var p in plugins)
             {
-                // Check if the plugin can process the file..
-                if (p.CanProcessFile(file))
+                try
                 {
-                    var ret = p.ProcessFile(file, opts);
+                    if (p.CanProcessFile(file))
+                    {
+                        var ret = p.ProcessFile(file, opts);
 
-                    logService.OnAddLogMessage(null, !ret
-                        ? new LogMessageEventArgs("Failed to unpack file.", LogMessageType.Error)
-                        : new LogMessageEventArgs("Successfully unpacked file!", LogMessageType.Success));
+                        logService.OnAddLogMessage(null, !ret
+                            ? new LogMessageEventArgs("Failed to unpack file.", LogMessageType.Error)
+                            : new LogMessageEventArgs("Successfully unpacked file!", LogMessageType.Success));
 
-                    if (ret) return 0;
+                        if (ret) return 0;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logService.OnAddLogMessage(null, new LogMessageEventArgs($"Plugin {p.Name} threw an unexpected exception: {ex.Message}", LogMessageType.Error));
+                }
+                finally
+                {
+                    p.Dispose();
                 }
             }
 

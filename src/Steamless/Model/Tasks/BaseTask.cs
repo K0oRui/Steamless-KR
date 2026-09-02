@@ -38,9 +38,6 @@ namespace Steamless.Model.Tasks
         [ObservableProperty] private double _progressTotal;
         [ObservableProperty] private string _text;
 
-        /// <summary>
-        /// Starts the task.
-        /// </summary>
         public Task StartTask()
         {
             return Task.Run(async () =>
@@ -51,9 +48,6 @@ namespace Steamless.Model.Tasks
                 });
         }
 
-        /// <summary>
-        /// The tasks main function to execute when started.
-        /// </summary>
         public abstract Task DoTask();
     }
 }

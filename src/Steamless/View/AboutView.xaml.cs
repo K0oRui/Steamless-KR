@@ -27,14 +27,8 @@
 
 namespace Steamless.View
 {
-    /// <summary>
-    /// Interaction logic for AboutView.xaml
-    /// </summary>
     public partial class AboutView
     {
-        /// <summary>
-        /// Default Constructor
-        /// </summary>
         public AboutView()
         {
             this.InitializeComponent();

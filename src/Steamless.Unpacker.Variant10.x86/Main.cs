@@ -1,4 +1,4 @@
-﻿#nullable disable
+#nullable disable
 
 /**
  * Steamless - Copyright (c) 2015 - 2024 atom0s [atom0s@live.com]
@@ -42,58 +42,27 @@ namespace Steamless.Unpacker.Variant10.x86
     [SteamlessApiVersion(1, 0)]
     public class Main : SteamlessPlugin
     {
-        /// <summary>
-        /// Internal logging service instance.
-        /// </summary>
         private LoggingService m_LoggingService;
 
-        /// <summary>
-        /// Gets the author of this plugin.
-        /// </summary>
         public override string Author => "atom0s";
 
-        /// <summary>
-        /// Gets the name of this plugin.
-        /// </summary>
         public override string Name => "SteamStub Variant 1.0 Unpacker (x86)";
 
-        /// <summary>
-        /// Gets the description of this plugin.
-        /// </summary>
         public override string Description => "Unpacker for the 32bit SteamStub variant 1.0.";
 
-        /// <summary>
-        /// Gets the version of this plugin.
-        /// </summary>
         public override Version Version => Assembly.GetExecutingAssembly().GetName().Version;
 
-        /// <summary>
-        /// Internal wrapper to log a message.
-        /// </summary>
-        /// <param name="msg"></param>
-        /// <param name="type"></param>
         private void Log(string msg, LogMessageType type)
         {
             this.m_LoggingService.OnAddLogMessage(this, new LogMessageEventArgs(msg, type));
         }
 
-        /// <summary>
-        /// Initialize function called when this plugin is first loaded.
-        /// </summary>
-        /// <param name="logService"></param>
-        /// <returns></returns>
         public override bool Initialize(LoggingService logService)
         {
             this.m_LoggingService = logService;
             return true;
         }
 
-        /// <summary>
-        /// Processing function called when a file is being unpacked. Allows plugins to check the file
-        /// and see if it can handle the file for its intended purpose.
-        /// </summary>
-        /// <param name="file"></param>
-        /// <returns></returns>
         public override bool CanProcessFile(string file)
         {
             try
@@ -109,30 +78,21 @@ namespace Steamless.Unpacker.Variant10.x86
                 // Attempt to locate the known v1.x signature..
                 return Pe32Helpers.FindPattern(bind, "60 81 EC 00 10 00 00 BE ?? ?? ?? ?? B9 6A") != -1;
             }
-            catch
+            catch (Exception)
             {
                 return false;
             }
         }
 
-        /// <summary>
-        /// Processing function called to allow the plugin to process the file.
-        /// </summary>
-        /// <param name="file"></param>
-        /// <param name="options"></param>
-        /// <returns></returns>
         public override bool ProcessFile(string file, SteamlessOptions options)
         {
-            // Initialize the class members..
             this.Options = options;
             this.OriginalEntryPoint = 0;
 
-            // Parse the file..
             this.File = new Pe32File(file);
             if (!this.File.Parse())
                 return false;
 
-            // Announce we are being unpacked with this packer..
             this.Log("File is packed with SteamStub Variant 1.0!", LogMessageType.Information);
 
             this.Log("Step 1 - Read, decode and validate the SteamStub DRM header.", LogMessageType.Information);
@@ -157,68 +117,51 @@ namespace Steamless.Unpacker.Variant10.x86
             return true;
         }
 
-        /// <summary>
-        /// Step #1
-        /// 
-        /// Read, decode and validate the SteamStub DRM header.
-        /// </summary>
-        /// <returns></returns>
         private bool Step1()
         {
-            // Obtain the bind section..
             var section = this.File.GetSection(".bind");
             if (!section.IsValid)
                 return false;
 
-            // Find the header information from the unpacker call..
             var bind = this.File.GetSectionData(".bind");
             var offset = Pe32Helpers.FindPattern(bind, "60 81 EC 00 10 00 00 BE ?? ?? ?? ?? B9 6A");
             if (offset == -1)
                 return false;
 
-            // Read the needed header information..
             var headerPointer = BitConverter.ToUInt32(bind, (int)offset + 8);
-            var headerSize = BitConverter.ToUInt32(bind, (int)offset + 13) * 4;
+            var headerSizeRaw = BitConverter.ToUInt32(bind, (int)offset + 13);
+            if (headerSizeRaw > 0x3FFFFFFF)
+                return false;
 
-            // Calculate the file offset from the pointer..
+            var headerSize = headerSizeRaw * 4;
+
             var fileOffset = this.File.GetFileOffsetFromRva(headerPointer - this.File.NtHeaders.OptionalHeader.ImageBase);
 
-            // Read the header data..
             var headerData = new byte[headerSize];
             Array.Copy(this.File.FileData, fileOffset, headerData, 0, headerSize);
 
-            // Decrypt the header data..
+            // The v1.0 header is obfuscated by XOR-ing each byte with the square of its index.
             for (var x = 0; x < headerSize; x++)
                 headerData[x] ^= (byte)(x * x);
 
-            // Store the header and validate it..
             this.StubHeader = Pe32Helpers.GetStructure<SteamStub32Var10Header>(headerData);
 
-            // Validate the header via the unpacker function matching the file entry point..
+            // Validates the header: the unpacker function must resolve to the file's entry point.
             if (this.StubHeader.BindFunction - this.File.NtHeaders.OptionalHeader.ImageBase != this.File.NtHeaders.OptionalHeader.AddressOfEntryPoint)
                 return false;
 
-            // Find the OEP from the unpacker function..
             offset = Pe32Helpers.FindPattern(bind, "61 B8 ?? ?? ?? ?? FF E0");
             if (offset == -1)
                 return false;
 
-            // Read and store the real OEP..
             this.OriginalEntryPoint = BitConverter.ToUInt32(bind, (int)offset + 2) - this.File.NtHeaders.OptionalHeader.ImageBase;
 
             return true;
         }
 
-        /// <summary>
-        /// Step #2
-        /// 
-        /// Remove the bind section if requested.
-        /// Find the code section.
-        /// </summary>
-        /// <returns></returns>
         private bool Step2()
         {
-            // Save the .bind section info before removal for later use..
+            // Stash the .bind bounds first; they are needed later to repair pointers into the removed section.
             {
                 var bindSection = this.File.GetSection(".bind");
                 if (bindSection.IsValid)
@@ -228,18 +171,14 @@ namespace Steamless.Unpacker.Variant10.x86
                 }
             }
 
-            // Remove the bind section if its not requested to be saved..
             if (!this.Options.KeepBindSection)
             {
-                // Obtain the .bind section..
                 var bindSection = this.File.GetSection(".bind");
                 if (!bindSection.IsValid)
                     return false;
 
-                // Remove the section..
                 this.File.RemoveSection(bindSection);
 
-                // Decrease the header section count..
                 var ntHeaders = this.File.NtHeaders;
                 ntHeaders.FileHeader.NumberOfSections--;
                 this.File.NtHeaders = ntHeaders;
@@ -252,17 +191,11 @@ namespace Steamless.Unpacker.Variant10.x86
             return true;
         }
 
-        /// <summary>
-        /// Scans .rdata section data for the original import descriptor table.
-        /// </summary>
         private uint FindImportDescriptorInRdata(byte[] rdataData, uint rdataRva)
         {
             return FindImportByDllNamePattern(rdataData, rdataRva);
         }
 
-        /// <summary>
-        /// Scans .rdata for import descriptors by searching for DLL name RVA patterns.
-        /// </summary>
         private uint FindImportByDllNamePattern(byte[] rdataData, uint rdataRva)
         {
             for (int offset = 0; offset < rdataData.Length - 20; offset += 4)
@@ -296,42 +229,30 @@ namespace Steamless.Unpacker.Variant10.x86
             return 0;
         }
 
-        /// <summary>
-        /// Step #3
-        /// 
-        /// Rebuild and save the unpacked file.
-        /// </summary>
-        /// <returns></returns>
         private bool Step3()
         {
             FileStream fStream = null;
 
             try
             {
-                // Zero the DosStubData if desired..
                 if (this.Options.ZeroDosStubData && this.File.DosStubSize > 0)
                     this.File.DosStubData = Enumerable.Repeat((byte)0, (int)this.File.DosStubSize).ToArray();
 
-                // Rebuild the file sections..
                 this.File.RebuildSections(this.Options.DontRealignSections == false);
 
-                // Open the unpacked file for writing..
                 var unpackedPath = this.File.FilePath + ".unpacked.exe";
                 fStream = new FileStream(unpackedPath, FileMode.Create, FileAccess.ReadWrite);
 
-                // Write the DOS header to the file..
                 fStream.WriteBytes(Pe32Helpers.GetStructureBytes(this.File.DosHeader));
 
-                // Write the DOS stub to the file..
                 if (this.File.DosStubSize > 0)
                     fStream.WriteBytes(this.File.DosStubData);
 
-                // Update the NT headers..
                 var ntHeaders = this.File.NtHeaders;
                 ntHeaders.OptionalHeader.AddressOfEntryPoint = this.OriginalEntryPoint;
                 ntHeaders.OptionalHeader.CheckSum = 0;
 
-                // Fix the import table entry if it points into the removed .bind section..
+                // If the import table lived in the removed .bind section, repoint it to the real descriptor in .rdata.
                 if (!this.Options.KeepBindSection && this.BindSectionSize > 0)
                 {
                     var importTable = ntHeaders.OptionalHeader.ImportTable;
@@ -352,7 +273,7 @@ namespace Steamless.Unpacker.Variant10.x86
                     }
                 }
 
-                // Fix the certificate table entry if a certificate exists and the file layout has changed..
+                // Repoint the certificate table to the new overlay start; its offset shifts when .bind is removed.
                 if (!this.Options.KeepBindSection && this.BindSectionSize > 0)
                 {
                     var certTable = ntHeaders.OptionalHeader.CertificateTable;
@@ -368,33 +289,25 @@ namespace Steamless.Unpacker.Variant10.x86
 
                 this.File.NtHeaders = ntHeaders;
 
-                // Write the NT headers to the file..
                 fStream.WriteBytes(Pe32Helpers.GetStructureBytes(ntHeaders));
 
-                // Write the sections to the file..
                 for (var x = 0; x < this.File.Sections.Count; x++)
                 {
                     var section = this.File.Sections[x];
                     var sectionData = this.File.SectionData[x];
 
-                    // Write the section header to the file..
                     fStream.WriteBytes(Pe32Helpers.GetStructureBytes(section));
 
-                    // Set the file pointer to the sections raw data..
                     var sectionOffset = fStream.Position;
                     fStream.Position = section.PointerToRawData;
 
-                    // Write the sections raw data..
                     fStream.WriteBytes(sectionData);
 
-                    // Reset the file offset..
                     fStream.Position = sectionOffset;
                 }
 
-                // Set the stream to the end of the file..
                 fStream.Position = fStream.Length;
 
-                // Write the overlay data if it exists..
                 if (this.File.OverlayData != null)
                     fStream.WriteBytes(this.File.OverlayData);
 
@@ -403,7 +316,7 @@ namespace Steamless.Unpacker.Variant10.x86
 
                 return true;
             }
-            catch
+            catch (Exception)
             {
                 this.Log(" --> Error trying to save unpacked file!", LogMessageType.Error);
                 return false;
@@ -414,12 +327,6 @@ namespace Steamless.Unpacker.Variant10.x86
             }
         }
 
-        /// <summary>
-        /// Step #4
-        /// 
-        /// Recalculate the file checksum.
-        /// </summary>
-        /// <returns></returns>
         private bool Step4()
         {
             var unpackedPath = this.File.FilePath + ".unpacked.exe";
@@ -431,37 +338,18 @@ namespace Steamless.Unpacker.Variant10.x86
 
             this.Log(" --> Unpacked file updated with new checksum!", LogMessageType.Success);
             return true;
-
         }
 
-        /// <summary>
-        /// Gets or sets the Steamless options this file was requested to process with.
-        /// </summary>
         private SteamlessOptions Options { get; set; }
 
-        /// <summary>
-        /// Gets or sets the file being processed.
-        /// </summary>
         private Pe32File File { get; set; }
 
-        /// <summary>
-        /// Gets or sets the DRM stub header.
-        /// </summary>
         private SteamStub32Var10Header StubHeader { get; set; }
 
-        /// <summary>
-        /// Gets or sets the true entry point take from the bind unpacker function.
-        /// </summary>
         private uint OriginalEntryPoint { get; set; }
 
-        /// <summary>
-        /// Gets or sets the .bind section virtual address.
-        /// </summary>
         private uint BindSectionRva { get; set; }
 
-        /// <summary>
-        /// Gets or sets the .bind section virtual size.
-        /// </summary>
         private uint BindSectionSize { get; set; }
     }
 }

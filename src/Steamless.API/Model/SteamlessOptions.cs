@@ -29,10 +29,8 @@ namespace Steamless.API.Model
 {
     using CommunityToolkit.Mvvm.ComponentModel;
 
-    /// <summary>
     /// Steamless processing options. Properties are source-generated from fields
     /// via CommunityToolkit.Mvvm [ObservableProperty] attribute.
-    /// </summary>
     public partial class SteamlessOptions : ObservableObject
     {
         [ObservableProperty] private bool _verboseOutput;
@@ -44,9 +42,6 @@ namespace Steamless.API.Model
         [ObservableProperty] private bool _zeroDosStubData;
         [ObservableProperty] private bool _recalculateFileChecksum;
 
-        /// <summary>
-        /// Default Constructor
-        /// </summary>
         public SteamlessOptions()
         {
             this.VerboseOutput = true;

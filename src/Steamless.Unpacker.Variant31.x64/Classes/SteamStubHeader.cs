@@ -29,49 +29,46 @@ namespace Steamless.Unpacker.Variant31.x64.Classes
 {
     using System.Runtime.InteropServices;
 
-    /// <summary>
-    /// SteamStub DRM Variant 3.1 x64 Header
-    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     public struct SteamStub64Var31Header
     {
-        public uint XorKey; // The base xor key, if defined, to unpack the file with.
-        public uint Signature; // The signature to ensure the xor decoding was successful.
-        public ulong ImageBase; // The base of the image that was protected.
-        public ulong AddressOfEntryPoint; // The entry point that is set from the DRM.
-        public uint BindSectionOffset; // The starting offset to the .bind section data. RVA(AddressOfEntryPoint - BindSectionOffset)
+        public uint XorKey;
+        public uint Signature; // 0xC0DEC0DF signature; validates the xor decoding was successful.
+        public ulong ImageBase;
+        public ulong AddressOfEntryPoint;
+        public uint BindSectionOffset; // Offset relative to AddressOfEntryPoint, e.g. RVA(AddressOfEntryPoint - BindSectionOffset).
         public uint Unknown0000; // [Cyanic: This field is most likely the .bind code size.]
-        public ulong OriginalEntryPoint; // The original entry point of the binary before it was protected.
+        public ulong OriginalEntryPoint;
         public uint Unknown0001; // [Cyanic: This field is most likely an offset to a string table.]
-        public uint PayloadSize; // The size of the payload data.
-        public uint DRMPDllOffset; // The offset to the SteamDrmp.dll file.
-        public uint DRMPDllSize; // The size of the SteamDrmp.dll file.
-        public uint SteamAppId; // The Steam application id of this program.
-        public uint Flags; // The DRM flags used while protecting this program.
-        public uint BindSectionVirtualSize; // The .bind section virtual size.
+        public uint PayloadSize;
+        public uint DRMPDllOffset;
+        public uint DRMPDllSize;
+        public uint SteamAppId;
+        public uint Flags;
+        public uint BindSectionVirtualSize;
         public uint Unknown0002; // [Cyanic: This field is most likely a hash of some sort.]
-        public ulong CodeSectionVirtualAddress; // The code section virtual address.
-        public ulong CodeSectionRawSize; // The code section raw size.
+        public ulong CodeSectionVirtualAddress;
+        public ulong CodeSectionRawSize;
 
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 0x20)]
-        public byte[] AES_Key; // The AES encryption key.
+        public byte[] AES_Key;
 
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 0x10)]
-        public byte[] AES_IV; // The AES encryption IV.
+        public byte[] AES_IV;
 
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 0x10)]
-        public byte[] CodeSectionStolenData; // The first 16 bytes of the code section stolen.
+        public byte[] CodeSectionStolenData; // The first 16 bytes of the code section, moved here before encryption.
 
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 0x04)]
-        public uint[] EncryptionKeys; // Encryption keys used to decrypt the SteamDrmp.dll file.
+        public uint[] EncryptionKeys; // XTEA keys used for decrypting the SteamDRMP.dll file.
 
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 0x08)]
-        public uint[] Unknown0003; // Unknown unused data.
+        public uint[] Unknown0003;
 
-        public ulong GetModuleHandleA_Rva; // The rva to GetModuleHandleA.
-        public ulong GetModuleHandleW_Rva; // The rva to GetModuleHandleW.
-        public ulong LoadLibraryA_Rva; // The rva to LoadLibraryA.
-        public ulong LoadLibraryW_Rva; // The rva to LoadLibraryW.
-        public ulong GetProcAddress_Rva; // The rva to GetProcAddress.
+        public ulong GetModuleHandleA_Rva;
+        public ulong GetModuleHandleW_Rva;
+        public ulong LoadLibraryA_Rva;
+        public ulong LoadLibraryW_Rva;
+        public ulong GetProcAddress_Rva;
     }
 }

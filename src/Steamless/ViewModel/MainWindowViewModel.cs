@@ -1,4 +1,4 @@
-﻿#nullable disable
+#nullable disable
 
 /**
  * Steamless - Copyright (c) 2015 - 2024 atom0s [atom0s@live.com]
@@ -49,19 +49,10 @@ namespace Steamless.ViewModel
 
     public partial class MainWindowViewModel : ObservableObject
     {
-        /// <summary>
-        /// Internal data service instance.
-        /// </summary>
         private readonly IDataService m_DataService;
 
-        /// <summary>
-        /// Internal logging service instance.
-        /// </summary>
         private readonly LoggingService m_LoggingService;
 
-        /// <summary>
-        /// Internal cancellation source for the tasks processing loop.
-        /// </summary>
         private CancellationTokenSource m_TaskCts;
 
         [ObservableProperty] private ApplicationState _state;
@@ -75,18 +66,11 @@ namespace Steamless.ViewModel
         [ObservableProperty] private SteamlessOptions _options;
         [ObservableProperty] private ObservableCollection<LogMessageEventArgs> _log;
 
-        /// <summary>
-        /// Default Constructor
-        /// </summary>
-        /// <param name="dataService"></param>
-        /// <param name="logService"></param>
         public MainWindowViewModel(IDataService dataService, LoggingService logService)
         {
-            // Store the data service instance..
             this.m_DataService = dataService;
             this.m_LoggingService = logService;
 
-            // Initialize the model..
             this.State = ApplicationState.Initializing;
             this.Tasks = new ConcurrentBag<BaseTask>();
             this.Options = new SteamlessOptions();
@@ -94,53 +78,40 @@ namespace Steamless.ViewModel
             this.ShowAboutView = false;
             this.InputFilePath = string.Empty;
 
-            // Attach logging service events..
             logService.AddLogMessage += this.AddLogMessage;
             logService.ClearLogMessages += this.ClearLogMessages;
 
             this.AddLogMessage(this, new LogMessageEventArgs("Steamless (c) 2015 - 2024 atom0s [atom0s@live.com]", LogMessageType.Debug));
             this.AddLogMessage(this, new LogMessageEventArgs("Website: http://atom0s.com/", LogMessageType.Debug));
 
-            // Initialize this model..
             this.Initialize();
         }
 
-        /// <summary>
-        /// Internal call to load the main view model.
-        /// </summary>
         private void Initialize()
         {
-            // Obtain the Steamless version..
             this.CurrentTask = new StatusTask("Initializing..");
             this.SteamlessVersion = this.m_DataService.GetSteamlessVersion();
 
-            // Load the Steamless plugins..
             this.Tasks.Add(new LoadPluginsTask(this.m_DataService, this.m_LoggingService));
 
-            // Start the application..
             this.Tasks.Add(new StartSteamlessTask());
 
-            // Start the tasks processing loop..
             if (this.m_TaskCts != null)
                 return;
             this.m_TaskCts = new CancellationTokenSource();
             _ = Task.Run(() => this.ProcessTasksLoopAsync(this.m_TaskCts.Token));
         }
 
-        /// <summary>
-        /// Loop to process application tasks.
-        /// </summary>
         private async Task ProcessTasksLoopAsync(CancellationToken ct)
         {
             while (!ct.IsCancellationRequested && this.State != ApplicationState.Closing)
             {
-                // Obtain a task from the task list..
                 if (this.Tasks.TryTake(out var task))
                 {
-                    this.CurrentTask = task;
+                    Application.Current.Dispatcher.Invoke(() => this.CurrentTask = task);
                     await this.CurrentTask.StartTask();
 
-                    // Consume LoadPluginsTask result on the UI thread..
+                    // LoadPluginsTask mutates ObservableCollection, so apply its result on the UI thread.
                     if (task is LoadPluginsTask lpt && lpt.LoadedPlugins != null)
                     {
                         Application.Current.Dispatcher.Invoke(() =>
@@ -152,7 +123,6 @@ namespace Steamless.ViewModel
                 }
                 else
                 {
-                    // No tasks left, set application to a running state..
                     if (this.State == ApplicationState.Initializing)
                         this.State = ApplicationState.Running;
                 }
@@ -161,51 +131,43 @@ namespace Steamless.ViewModel
             }
         }
 
-        /// <summary>
-        /// Adds a message to the message log.
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
         private void AddLogMessage(object sender, LogMessageEventArgs e)
         {
-            // Do not log debug messages if verbose output is disabled..
+            // Debug messages are only shown when verbose output is enabled.
             if (!this.Options.VerboseOutput && e.MessageType == LogMessageType.Debug)
                 return;
 
-            // Check if we need to invoke from the dispatcher thread..
+            // Marshal to the UI thread since the log is an ObservableCollection.
+            if (Application.Current == null)
+                return;
+
             if (!Application.Current.Dispatcher.CheckAccess())
             {
                 Application.Current.Dispatcher.Invoke(() => this.AddLogMessage(sender, e));
                 return;
             }
 
-            // Prefix the parent to the message..
+            var prefix = "[Unknown]";
             try
             {
                 if (sender != null)
-                {
-                    var baseName = sender.GetType().Assembly.GetName().Name;
-                    e.Message = $"[{baseName}] {e.Message}";
-                }
-                else
-                    e.Message = "[Unknown] " + e.Message;
+                    prefix = $"[{sender.GetType().Assembly.GetName().Name}]";
             }
-            catch
+            catch (Exception)
             {
-                // Do nothing with this exception..
+                // Ignore sender assembly lookup failures; fall back to "[Unknown]".
             }
 
-            this.Log.Add(e);
+            var entry = new LogMessageEventArgs($"{prefix} {e.Message}", e.MessageType);
+            this.Log.Add(entry);
         }
 
-        /// <summary>
-        /// Clears the message log.
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
         private void ClearLogMessages(object sender, EventArgs e)
         {
-            // Check if we need to invoke from the dispatcher thread..
+            // Marshal to the UI thread since the log is an ObservableCollection.
+            if (Application.Current == null)
+                return;
+
             if (!Application.Current.Dispatcher.CheckAccess())
             {
                 Application.Current.Dispatcher.Invoke(() => this.ClearLogMessages(sender, e));
@@ -218,22 +180,17 @@ namespace Steamless.ViewModel
         [RelayCommand]
         private void WindowClose()
         {
-            // Set the launcher state to closing..
             this.State = ApplicationState.Closing;
 
-            // Cancel the tasks processing loop..
             this.m_TaskCts?.Cancel();
-            this.m_TaskCts?.Dispose();
             this.m_TaskCts = null;
 
-            // Shutdown the application..
             Application.Current.Shutdown(0);
         }
 
         [RelayCommand]
         private static void WindowMinimize()
         {
-            // Minimize the window..
             if (Application.Current.MainWindow != null)
                 Application.Current.MainWindow.WindowState = WindowState.Minimized;
         }
@@ -263,10 +220,9 @@ namespace Steamless.ViewModel
         {
             args.Handled = true;
 
-            // Check for files being dragged..
             if (args.Data.GetDataPresent(DataFormats.FileDrop))
             {
-                // Ensure only 1 file is being dropped..
+                // Only accept the first dropped file.
                 var files = (string[])args.Data.GetData(DataFormats.FileDrop);
                 if (files != null && files.Length >= 1)
                     this.InputFilePath = files[0];
@@ -278,10 +234,9 @@ namespace Steamless.ViewModel
         {
             args.Handled = true;
 
-            // Check for files being dragged..
             if (args.Data.GetDataPresent(DataFormats.FileDrop))
             {
-                // Ensure only 1 file is being dropped..
+                // Accept only single-file drops.
                 var files = (string[])args.Data.GetData(DataFormats.FileDrop);
                 args.Effects = files != null && files.Length == 1 ? DragDropEffects.Move : DragDropEffects.None;
             }
@@ -292,7 +247,6 @@ namespace Steamless.ViewModel
         [RelayCommand]
         private void BrowseForInputFile()
         {
-            // Display the find file dialog..
             var ofd = new OpenFileDialog
             {
                 CheckFileExists = true,
@@ -305,7 +259,6 @@ namespace Steamless.ViewModel
                 RestoreDirectory = true
             };
 
-            // Update the input file path..
             var showDialog = ofd.ShowDialog();
             if (showDialog != null && (bool)showDialog)
                 this.InputFilePath = ofd.FileName;
@@ -316,22 +269,20 @@ namespace Steamless.ViewModel
         {
             await Task.Run(() =>
             {
-                // Validation checks..
                 if (this.SelectedPluginIndex == -1)
                     return;
-                if (this.SelectedPluginIndex > this.Plugins.Count)
+                if (this.SelectedPluginIndex >= this.Plugins.Count)
                     return;
                 if (string.IsNullOrEmpty(this.InputFilePath))
                     return;
 
                 try
                 {
-                    // Select the plugin..
                     var plugin = this.Plugins[this.SelectedPluginIndex];
                     if (plugin == null)
                         throw new Exception("Invalid plugin selected.");
 
-                    // Allow the plugin to process the file..
+                    // Dispatch to the selected plugin; it re-dispatches to its siblings.
                     var siblings = this.Plugins.Where(p => p != plugin);
                     if (plugin.CanProcessFile(this.InputFilePath))
                         this.AddLogMessage(this, !plugin.ProcessFile(this.InputFilePath, this.Options, siblings) ? new LogMessageEventArgs("Failed to unpack file.", LogMessageType.Error) : new LogMessageEventArgs("Successfully unpacked file!", LogMessageType.Success));

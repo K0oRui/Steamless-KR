@@ -1,4 +1,4 @@
-﻿#nullable disable
+#nullable disable
 
 /**
  * Steamless - Copyright (c) 2015 - 2024 atom0s [atom0s@live.com]
@@ -53,7 +53,7 @@ namespace Steamless.Model
             {
                 return Assembly.GetExecutingAssembly().EntryPoint.DeclaringType?.Assembly.GetName().Version ?? new Version(0, 0, 0, 0);
             }
-            catch
+            catch (Exception)
             {
                 return new Version(0, 0, 0, 0);
             }
@@ -66,15 +66,18 @@ namespace Steamless.Model
                 var plugins = new List<SteamlessPlugin>();
                 var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Plugins");
 
+                if (!Directory.Exists(path))
+                    return plugins;
+
                 foreach (var dll in Directory.GetFiles(path, "*.dll"))
                 {
-                    if (dll.ToLower().Contains("steamless.api.dll"))
+                    if (dll.EndsWith("steamless.api.dll", StringComparison.OrdinalIgnoreCase))
                         continue;
 
                     try
                     {
                         var asm = Assembly.Load(File.ReadAllBytes(dll));
-                        var baseClass = asm.GetTypes().SingleOrDefault(t => t.BaseType == typeof(SteamlessPlugin));
+                        var baseClass = asm.GetTypes().FirstOrDefault(t => t.BaseType == typeof(SteamlessPlugin));
                         if (baseClass == null)
                         {
                             this.m_LoggingService.OnAddLogMessage(this, new LogMessageEventArgs($"Failed to load plugin; could not find SteamlessPlugin base class. ({Path.GetFileName(dll)})", LogMessageType.Warning));
@@ -104,7 +107,7 @@ namespace Steamless.Model
 
                         plugins.Add(plugin);
                     }
-                    catch
+                    catch (Exception)
                     {
                         this.m_LoggingService.OnAddLogMessage(this, new LogMessageEventArgs($"Failed to load DLL as a Steamless plugin: ({Path.GetFileName(dll)})", LogMessageType.Error));
                     }
@@ -112,7 +115,7 @@ namespace Steamless.Model
 
                 return plugins.OrderBy(p => p.Name).ToList();
             }
-            catch
+            catch (Exception)
             {
                 return new List<SteamlessPlugin>();
             }

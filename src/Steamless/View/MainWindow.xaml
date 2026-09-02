@@ -34,7 +34,6 @@
         TextOptions.TextRenderingMode="ClearType" TextOptions.TextFormattingMode="Display" ResizeMode="CanResizeWithGrip"
         AllowsTransparency="False" WindowStartupLocation="CenterScreen" WindowStyle="None">
 
-    <!-- Main Content -->
     <Border x:Name="LayoutRoot" ClipToBounds="True" Margin="0"
             BorderBrush="#193754" BorderThickness="1">
         <Border.Background>
@@ -44,7 +43,6 @@
             </LinearGradientBrush>
         </Border.Background>
 
-        <!-- Mouse Down Event Handler -->
         <i:Interaction.Triggers>
             <i:EventTrigger EventName="MouseLeftButtonDown">
                 <i:InvokeCommandAction Command="{Binding WindowMouseDownCommand}" />
@@ -52,7 +50,6 @@
         </i:Interaction.Triggers>
 
         <Grid x:Name="ViewGrid">
-            <!-- Splash View -->
             <view:SplashView>
                 <view:SplashView.Style>
                     <Style TargetType="{x:Type FrameworkElement}">
@@ -85,7 +82,6 @@
                 </view:SplashView.Style>
             </view:SplashView>
 
-            <!-- Main View -->
             <view:MainView>
                 <view:MainView.Style>
                     <Style TargetType="{x:Type FrameworkElement}">
@@ -118,7 +114,6 @@
                 </view:MainView.Style>
             </view:MainView>
 
-            <!-- About View -->
             <view:AboutView>
                 <view:AboutView.Style>
                     <Style TargetType="{x:Type FrameworkElement}">
@@ -151,7 +146,6 @@
                 </view:AboutView.Style>
             </view:AboutView>
 
-            <!-- Window Navbar -->
             <Grid VerticalAlignment="Top">
                 <Grid HorizontalAlignment="Left" VerticalAlignment="Top">
                     <Label Content="Steamless" Foreground="White" />

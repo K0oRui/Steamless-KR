@@ -27,14 +27,8 @@
 
 namespace Steamless.View
 {
-    /// <summary>
-    /// Interaction logic for SplashView.xaml
-    /// </summary>
     public partial class SplashView
     {
-        /// <summary>
-        /// Default Constructor
-        /// </summary>
         public SplashView()
         {
             this.InitializeComponent();

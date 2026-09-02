@@ -27,7 +27,6 @@
                     xmlns:themes="clr-namespace:Microsoft.Windows.Themes;assembly=PresentationFramework.Aero"
                     xmlns:classes="clr-namespace:Steamless.Classes">
 
-    <!-- Control: Button -->
     <Style x:Key="{x:Type Button}" TargetType="{x:Type Button}">
         <Setter Property="Height" Value="24" />
         <Setter Property="Template">
@@ -73,7 +72,6 @@
         </Setter>
     </Style>
 
-    <!-- Control: GroupBox -->
     <Style x:Key="{x:Type GroupBox}" TargetType="{x:Type GroupBox}">
         <Setter Property="Template">
             <Setter.Value>
@@ -97,12 +95,10 @@
         </Setter>
     </Style>
 
-    <!-- Control: ProgressBar -->
     <Style x:Key="{x:Type ProgressBar}" TargetType="{x:Type ProgressBar}">
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate>
-                    <!-- Main Progressbar Grid -->
                     <Grid ClipToBounds="True">
                         <VisualStateManager.VisualStateGroups>
                             <VisualStateGroup x:Name="ValidationStates" />
@@ -169,11 +165,9 @@
                                 </VisualState>
                             </VisualStateGroup>
                         </VisualStateManager.VisualStateGroups>
-                        <!-- Progressbar Track -->
                         <Border x:Name="PART_Track" Background="#3F000000" UseLayoutRounding="False">
                             <Rectangle x:Name="PART_Indicator" Fill="{TemplateBinding Foreground}" HorizontalAlignment="Left" UseLayoutRounding="False" />
                         </Border>
-                        <!-- Progressbar Dots -->
                         <Canvas x:Name="Dots" Width="410" Height="3" Margin="0,0,0,0" HorizontalAlignment="Center" VerticalAlignment="Center" UseLayoutRounding="False">
                             <Ellipse x:Name="Dot0" Fill="{TemplateBinding Foreground}" Width="3" Height="3" StrokeThickness="0" HorizontalAlignment="Left" VerticalAlignment="Top" />
                             <Ellipse x:Name="Dot1" Fill="{TemplateBinding Foreground}" Width="3" Height="3" StrokeThickness="0" HorizontalAlignment="Left" VerticalAlignment="Top" />
@@ -186,7 +180,6 @@
         </Setter>
     </Style>
 
-    <!-- Control: TextBox -->
     <ControlTemplate x:Key="ValidationToolTipTemplate">
         <Grid x:Name="Root" Margin="5,0" RenderTransformOrigin="0,0" Opacity="0">
             <Grid.RenderTransform>
@@ -233,7 +226,6 @@
         </Grid>
     </ControlTemplate>
 
-    <!-- Control: TextBox -->
     <Style TargetType="{x:Type TextBox}">
         <Setter Property="BorderBrush" Value="#595959" />
         <Setter Property="BorderThickness" Value="1"/>
@@ -258,7 +250,6 @@
         </Setter>
     </Style>
 
-    <!-- Control: ComboBox -->
     <Style x:Key="FocusVisual">
         <Setter Property="Control.Template">
             <Setter.Value>
@@ -591,7 +582,6 @@
         </Style.Triggers>
     </Style>
 
-    <!-- Controls: ListView -> Grid -->
     <Style x:Key="{x:Static GridView.GridViewScrollViewerStyleKey}" TargetType="ScrollViewer">
         <Setter Property="Template">
             <Setter.Value>
@@ -649,13 +639,11 @@
         </Setter>
     </Style>
 
-    <!-- Controls: ListView -> Grid -->
     <Style TargetType="{x:Type GridViewHeaderRowPresenter}">
         <Setter Property="OverridesDefaultStyle" Value="True" />
         <Setter Property="Margin" Value="0" />
     </Style>
 
-    <!-- Controls: ListView -> Grid -->
     <Style TargetType="{x:Type GridViewColumnHeader}">
         <Setter Property="Margin" Value="0" />
         <Setter Property="Padding" Value="0" />
@@ -675,7 +663,6 @@
         <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
 
-    <!-- Controls: ListView -->
     <Style x:Key="LogListView" TargetType="{x:Type ListView}">
         <Setter Property="classes:GridViewColumnWidthFromItemsBehavior.Enabled" Value="True" />
         <Setter Property="BorderBrush" Value="Transparent" />

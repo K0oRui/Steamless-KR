@@ -25,14 +25,12 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!-- Accent Colors -->
     <Color x:Key="HighlightColor">#FFFF4A0D</Color>
     <Color x:Key="AccentColor">#CCFF4A0D</Color>
     <Color x:Key="AccentColor2">#99FF4A0D</Color>
     <Color x:Key="AccentColor3">#66FF4A0D</Color>
     <Color x:Key="AccentColor4">#33FF4A0D</Color>
 
-    <!-- Base Colors -->
     <Color x:Key="BlackColor">#FF000000</Color>
     <Color x:Key="WhiteColor">#FFFFFFFF</Color>
     <Color x:Key="FontColor">#A8A8A8</Color>
@@ -47,13 +45,11 @@
     <Color x:Key="Gray9">#5EC9C9C9</Color>
     <Color x:Key="Gray10">#FFF7F7F7</Color>
 
-    <!-- Progressbar Colors -->
     <Color x:Key="ProgressIndeterminateColor1">#33878787</Color>
     <Color x:Key="ProgressIndeterminateColor2">#33959595</Color>
     <Color x:Key="ProgressIndeterminateColor3">#4C000000</Color>
     <Color x:Key="ProgressIndeterminateColor4">#4C000000</Color>
 
-    <!-- Brush Colors -->
     <SolidColorBrush x:Key="ControlBackgroundBrush" Color="{DynamicResource WhiteColor}"/>
     <SolidColorBrush x:Key="WhiteBrush" Color="{DynamicResource WhiteColor}" />
     <SolidColorBrush x:Key="BlackBrush" Color="{DynamicResource BlackColor}" />
@@ -111,7 +107,6 @@
     <SolidColorBrush x:Key="FlatButtonPressedBackgroundBrush" Color="#222222"/>
     <SolidColorBrush x:Key="FlatButtonPressedForegroundBrush" Color="White"/>
 
-    <!-- Validation Brushes -->
     <SolidColorBrush x:Key="ControlsValidationBrush" Color="#FFDB000C"/>
     <SolidColorBrush x:Key="ValidationBrush1" Color="#052A2E31" />
     <SolidColorBrush x:Key="ValidationBrush2" Color="#152A2E31" />
@@ -127,7 +122,6 @@
     <SolidColorBrush x:Key="ValidationSummaryFillColor2" Color="#FFF7D8DB" />
     <SolidColorBrush x:Key="ValidationTextBrush" Color="White"/>
 
-    <!-- WPF Defaults -->
     <SolidColorBrush x:Key="{x:Static SystemColors.WindowBrushKey}" Color="{DynamicResource WhiteColor}" />
     <SolidColorBrush x:Key="{x:Static SystemColors.ControlTextBrushKey}" Color="{DynamicResource FontColor}" />
     <SolidColorBrush x:Key="MenuBackgroundBrush" Color="{StaticResource WhiteColor}" />

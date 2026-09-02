@@ -27,9 +27,6 @@
 
 namespace Steamless.Unpacker.Variant21.x86.Classes
 {
-    /// <summary>
-    /// Steam Stub Variant 2.1 DRM Flags
-    /// </summary>
     public enum DrmFlags
     {
         NoModuleVerification = 0x02,

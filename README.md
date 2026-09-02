@@ -48,29 +48,25 @@
 >
 > Original upstream: [atom0s/Steamless](https://github.com/atom0s/Steamless)
 
-Steamless is a DRM remover of the various SteamStub variants applied to applications and games released on Steam via the DRM tool in the Steamworks SDK.
+Steamless removes the SteamStub DRM protection from Steam games and applications. It handles every known variant, from the first version to the most recent.
 
-Steamless aims to be a single solution for unpacking all variants of the SteamStub DRM, ranging from the very first version to the most recently released.
+# What Steamless does
 
-# What Steamless Will Do
+Steamless removes the SteamStub DRM protection layer applied via the DRM tool from the Steamworks SDK.
 
-Steamless will remove the SteamStub DRM protection layer that is applied via the DRM tool from the Steamworks SDK.
+# What Steamless won't do
 
-# What Steamless Wont Do
+Steamless is not a general-purpose Steam bypass tool. It:
 
-Steamless **WILL NEVER** do any of the following:
+  * Does not remove the Steamworks API integration (`steam_api.dll` / `steam_api64.dll`).
+  * Does not include or distribute a Steamworks API emulator.
+  * Does not handle Valve's CEG (Custom Executable Generation) DRM used on some older games.
+  * Does not promote, encourage, or assist with piracy.
+  * Does not help bypass anti-cheats or other game protections.
 
-  * Steamless will never remove the Steamworks API integration. (via steam_api.dll/steam_api64.dll)
-  * Steamless will never include or distribute any emulator for the Steamworks API integration.
-  * Steamless will never handle Valve's CEG (Custom Executable Generation) DRM that is used on some older games.
-  * Steamless will never promote, encourage, or assist with piracy.
-  * Steamless will never assist with bypassing anti-cheats or other protections in place by games.
+Do not ask for help running games without Steam. Requests will be ignored.
 
-Do not ask for help with running games without Steam. Your requests will be ignored/blocked.
-
-That is not the scope or goal of this project.
-
-# What is SteamStub DRM?
+# What is SteamStub DRM
 
 From the Steamworks documentation:
 
@@ -78,7 +74,7 @@ From the Steamworks documentation:
 > In addition to DRM solutions, Steamworks also offers protection for game through day one release by shipping encrypted media to stores worldwide. There's no worry that your game will leak early from the manufacturing path, because your game stays encrypted until the moment you decide to release it. This protection can be added to your game simply by handing us finished bits or a gold master. <br><br>
 > ref: hxxps://partner.steamgames.com/documentation/api
 
-# Supported Versions
+# Supported versions
 
 Steamless currently supports the following SteamStub DRM variants:
 
@@ -118,15 +114,15 @@ for a particular purpose, non-infringement, absence of latent or other defects, 
 errors, whether or not known or discoverable. Where disclaimers of warranties are not allowed in full or in part, this 
 disclaimer may not apply to You.
 
-Steamless is not intended for malicious use or for the use of obtaining or playing games illegally.
-Steamless should only be used on games that you legally purchased and own.
+Steamless is not intended for malicious use or for obtaining or playing games illegally.
+Use Steamless only on games you legally purchased and own.
 
 Steamless is not associated with Steam or any of its partners / affiliates.
 No code used within Steamless is taken from Valve or any of its partners / affiliates.
 
 Steamless is released for educational purposes in the hopes to learn and understand DRM technologies. 
 
-Use Steamless at your own risk. I, atom0s, am not responsible for what happens while using Steamless. You take full reponsibility for any outcome that happens to you while using this application. Do not distribute unpacked files.
+Use Steamless at your own risk. I, atom0s, am not responsible for what happens while using Steamless. You take full responsibility for any outcome while using this application. Do not distribute unpacked files.
 ```
 
 # Thanks
@@ -160,7 +156,7 @@ dotnet run --project .\src\Steamless -c Release
 # Contributing
 
   * Follow the `.editorconfig` conventions (4-space indentation, `m_` prefix for private fields, etc.).
-  * Please do not introduce additional dependencies without a discussion before hand.
-  * Please do not alter or remove any copyrights without a discussion prior.
-  * Please do not hard code information specific to any one target. Steamless should be dynamic for all titles.
+  * Do not introduce additional dependencies without prior discussion.
+  * Do not alter or remove any copyrights without prior discussion.
+  * Do not hard-code information specific to one target. Steamless should be dynamic for all titles.
   * New code should be nullable-aware (`#nullable enable`). Existing files use `#nullable disable` and can be converted incrementally.

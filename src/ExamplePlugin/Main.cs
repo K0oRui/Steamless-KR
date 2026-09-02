@@ -37,36 +37,16 @@ namespace ExamplePlugin
     [SteamlessApiVersion(1, 0)]
     public class Main : SteamlessPlugin
     {
-        /// <summary>
-        /// Internal logging service instance.
-        /// </summary>
         private LoggingService m_LoggingService;
 
-        /// <summary>
-        /// Gets the author of this plugin.
-        /// </summary>
         public override string Author => "Steamless Development Team";
 
-        /// <summary>
-        /// Gets the name of this plugin.
-        /// </summary>
         public override string Name => "Example Plugin";
 
-        /// <summary>
-        /// Gets the description of this plugin.
-        /// </summary>
         public override string Description => "A simple plugin example.";
 
-        /// <summary>
-        /// Gets the version of this plugin.
-        /// </summary>
         public override Version Version => Assembly.GetExecutingAssembly().GetName().Version;
 
-        /// <summary>
-        /// Initialize function called when this plugin is first loaded.
-        /// </summary>
-        /// <param name="logService"></param>
-        /// <returns></returns>
         public override bool Initialize(LoggingService logService)
         {
             this.m_LoggingService = logService;
@@ -75,12 +55,6 @@ namespace ExamplePlugin
             return true;
         }
 
-        /// <summary>
-        /// Processing function called when a file is being unpacked. Allows plugins to check the file
-        /// and see if it can handle the file for its intended purpose.
-        /// </summary>
-        /// <param name="file"></param>
-        /// <returns></returns>
         public override bool CanProcessFile(string file)
         {
             this.m_LoggingService.OnAddLogMessage(this, new LogMessageEventArgs("ExamplePlugin was asked to check if it can process a file!", LogMessageType.Debug));
@@ -88,12 +62,6 @@ namespace ExamplePlugin
             return false;
         }
 
-        /// <summary>
-        /// Processing function called to allow the plugin to process the file.
-        /// </summary>
-        /// <param name="file"></param>
-        /// <param name="options"></param>
-        /// <returns></returns>
         public override bool ProcessFile(string file, SteamlessOptions options)
         {
             this.m_LoggingService.OnAddLogMessage(this, new LogMessageEventArgs("ExamplePlugin was asked to process a file!", LogMessageType.Debug));

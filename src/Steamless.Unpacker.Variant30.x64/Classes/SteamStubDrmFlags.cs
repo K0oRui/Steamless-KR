@@ -27,9 +27,6 @@
 
 namespace Steamless.Unpacker.Variant30.x64.Classes
 {
-    /// <summary>
-    /// Steam Stub Variant 3.0 DRM Flags
-    /// </summary>
     public enum SteamStubDrmFlags
     {
         NoModuleVerification = 0x02,

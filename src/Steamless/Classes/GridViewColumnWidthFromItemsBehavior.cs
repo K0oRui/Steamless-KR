@@ -38,6 +38,9 @@ namespace Steamless.Classes
 
     public static class GridViewColumnWidthFromItemsBehavior
     {
+        private static readonly DependencyProperty CollectionChangedHandlerProperty =
+            DependencyProperty.RegisterAttached("CollectionChangedHandler", typeof(NotifyCollectionChangedEventHandler), typeof(GridViewColumnWidthFromItemsBehavior));
+
         public static readonly DependencyProperty GridViewColumnWidthFromItemsProperty =
             DependencyProperty.RegisterAttached("Enabled", typeof(bool), typeof(GridViewColumnWidthFromItemsBehavior), new UIPropertyMetadata(false, OnGridViewColumnWidthFromItemsPropertyChanged));
 
@@ -58,45 +61,69 @@ namespace Steamless.Classes
                 if ((bool)e.NewValue)
                     lv.Loaded += OnListViewLoaded;
                 else
+                {
                     lv.Loaded -= OnListViewLoaded;
+                    DetachHandler(lv);
+                }
             }
         }
 
         private static void OnListViewLoaded(object sender, RoutedEventArgs routedEventArgs)
         {
             var lv = sender as ListView;
-            var nc = ((INotifyCollectionChanged)lv?.Items);
+            var nc = lv?.Items as INotifyCollectionChanged;
 
             if (nc == null)
                 return;
 
-            var dpi = VisualTreeHelper.GetDpi(lv);
-            nc.CollectionChanged += (o, args) =>
+            DetachHandler(lv);
+
+            NotifyCollectionChangedEventHandler handler = null;
+            handler = (o, args) =>
+            {
+                if (lv.ItemContainerGenerator.Status != GeneratorStatus.ContainersGenerated)
+                    return;
+
+                var dpi = VisualTreeHelper.GetDpi(lv);
+
+                // Column 1 is the message column; size it to the widest entry.
+                var width = lv.Items.OfType<LogMessageEventArgs>()
+                              .Select(msg => new FormattedText(msg.Message, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface("Tahoma"), 11, Brushes.Black, dpi.PixelsPerDip))
+                              .Select(txt => txt.Width)
+                              .Concat(new double[] { 0.0 })
+                              .Max();
+
+                var gv = lv.View as GridView;
+                if (gv != null)
+                    gv.Columns[1].Width = width + 24.0;
+
+                if (lv.Items.Count > 0)
+                    lv.ScrollIntoView(lv.Items[lv.Items.Count - 1]);
+                else
                 {
-                    if (lv.ItemContainerGenerator.Status != GeneratorStatus.ContainersGenerated)
-                        return;
-
-                    // Obtain the largest item width..
-                    var width = lv.Items.OfType<LogMessageEventArgs>()
-                                  .Select(msg => new FormattedText(msg.Message, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface("Tahoma"), 11, Brushes.Black, dpi.PixelsPerDip))
-                                  .Select(txt => txt.Width)
-                                  .Concat(new double[] { 0.0f })
-                                  .Max();
-
-                    // Resize the message column..
-                    var gv = lv.View as GridView;
                     if (gv != null)
-                        gv.Columns[1].Width = width + 24.0f;
+                        gv.Columns[1].Width = 600;
+                }
+            };
 
-                    // Scroll to the last item..
-                    if (lv.Items.Count > 0)
-                        lv.ScrollIntoView(lv.Items[lv.Items.Count - 1]);
-                    else
-                    {
-                        if (gv != null)
-                            gv.Columns[1].Width = 600;
-                    }
-                };
+            lv.SetValue(CollectionChangedHandlerProperty, handler);
+            nc.CollectionChanged += handler;
+        }
+
+        private static void DetachHandler(ListView lv)
+        {
+            if (lv == null)
+                return;
+
+            var oldHandler = lv.GetValue(CollectionChangedHandlerProperty) as NotifyCollectionChangedEventHandler;
+            if (oldHandler != null)
+            {
+                var nc = lv.Items as INotifyCollectionChanged;
+                if (nc != null)
+                    nc.CollectionChanged -= oldHandler;
+
+                lv.ClearValue(CollectionChangedHandlerProperty);
+            }
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿#nullable disable
+#nullable disable
 
 /**
  * Steamless - Copyright (c) 2015 - 2024 atom0s [atom0s@live.com]
@@ -130,7 +130,7 @@ namespace Steamless.API.PE64
                 File.WriteAllBytes(path, data);
                 return true;
             }
-            catch
+            catch (Exception)
             {
                 return false;
             }
@@ -167,12 +167,12 @@ namespace Steamless.API.PE64
                         }
                     }
                     if (found)
-                        return (uint)x;
+                        return x;
                 }
 
                 return -1;
             }
-            catch
+            catch (Exception)
             {
                 return -1;
             }

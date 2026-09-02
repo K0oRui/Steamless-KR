@@ -32,31 +32,15 @@ namespace Steamless.API.Services
 
     public class LoggingService
     {
-        /// <summary>
-        /// Adds a log message to the logging pane of Steamless.
-        /// </summary>
         public event SteamlessEvents.AddLogMessageEventHandler AddLogMessage;
 
-        /// <summary>
-        /// Clears the logging pane of Steamless.
-        /// </summary>
         public event SteamlessEvents.ClearLogMessagesEventHandler ClearLogMessages;
 
-        /// <summary>
-        /// Invokes the AddLogMessage event to add a log message to Steamless.
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
         public virtual void OnAddLogMessage(object sender, LogMessageEventArgs e)
         {
             this.AddLogMessage?.Invoke(sender, e);
         }
 
-        /// <summary>
-        /// Invokes the ClearLogMessages event to remove all current log messages from Steamless.
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
         public virtual void OnClearLogMessages(object sender, EventArgs e)
         {
             this.ClearLogMessages?.Invoke(sender, e);

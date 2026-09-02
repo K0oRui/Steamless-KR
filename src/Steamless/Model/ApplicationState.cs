@@ -29,32 +29,12 @@ namespace Steamless.Model
 {
     public enum ApplicationState
     {
-        /// <summary>
-        /// Initializing
-        /// 
-        /// The state when the application is loading and/or updating.
-        /// </summary>
         Initializing,
 
-        /// <summary>
-        /// Running
-        /// 
-        /// The state when the application is done initializing and is running.
-        /// </summary>
         Running,
 
-        /// <summary>
-        /// Closing
-        /// 
-        /// The state when the launcher is closing.
-        /// </summary>
         Closing,
 
-        /// <summary>
-        /// Closed
-        /// 
-        /// The state when the launcher is closed.
-        /// </summary>
         Closed
     }
 }

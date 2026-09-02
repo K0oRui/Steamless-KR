@@ -36,26 +36,13 @@ namespace Steamless.Model.Tasks
 
     public class LoadPluginsTask : BaseTask
     {
-        /// <summary>
-        /// Internal data service instance.
-        /// </summary>
         private readonly IDataService m_DataService;
 
-        /// <summary>
-        /// Internal logging service instance.
-        /// </summary>
         private readonly LoggingService m_LoggingService;
 
-        /// <summary>
-        /// The loaded and sorted plugin list (with AutomaticPlugin at index 0).
-        /// </summary>
+        // Sorted plugin list with AutomaticPlugin (index 0) for auto-detection.
         public ObservableCollection<SteamlessPlugin> LoadedPlugins { get; private set; }
 
-        /// <summary>
-        /// Default Constructor
-        /// </summary>
-        /// <param name="dataService"></param>
-        /// <param name="loggingService"></param>
         public LoadPluginsTask(IDataService dataService, LoggingService loggingService)
         {
             this.m_DataService = dataService;
@@ -63,9 +50,6 @@ namespace Steamless.Model.Tasks
             this.Text = "Loading plugins...";
         }
 
-        /// <summary>
-        /// The tasks main function to execute when started.
-        /// </summary>
         public override Task DoTask()
         {
             return Task.Run(() =>
@@ -73,18 +57,16 @@ namespace Steamless.Model.Tasks
                     var plugins = this.m_DataService.GetSteamlessPlugins();
                     var sorted = plugins.OrderBy(p => p.Name).ToList();
 
-                    // Print out the loaded plugins..
                     sorted.ForEach(p =>
                         {
                             this.m_LoggingService.OnAddLogMessage(this, new LogMessageEventArgs($"Loaded plugin: {p.Name} - by {p.Author} (v.{p.Version})", LogMessageType.Success));
                         });
 
-                    // Add the automatic plugin at the start of the list..
+                    // AutomaticPlugin must sit at index 0 so the UI default selection is auto-detection.
                     var auto = new AutomaticPlugin();
                     auto.Initialize(this.m_LoggingService);
                     sorted.Insert(0, auto);
 
-                    // Store the result..
                     this.LoadedPlugins = new ObservableCollection<SteamlessPlugin>(sorted);
                 });
         }

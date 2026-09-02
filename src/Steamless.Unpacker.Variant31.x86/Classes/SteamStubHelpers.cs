@@ -32,27 +32,21 @@ namespace Steamless.Unpacker.Variant31.x86.Classes
     public static class SteamStubHelpers
     {
         /// <summary>
-        /// Xor decrypts the given data starting with the given key, if any.
-        /// 
-        /// @note    If no key is given (0) then the first key is read from the first
-        ///          4 bytes inside of the data given.
+        /// Xor decrypts the given data using a rolling key; the key is replaced by
+        /// the previous plaintext word for the next block.
+        /// @note If no key is given (0) then the first key is read from the first
+        ///       4 bytes inside of the data given.
         /// </summary>
-        /// <param name="data">The data to xor decode.</param>
-        /// <param name="size">The size of the data to decode.</param>
-        /// <param name="key">The starting xor key to decode with.</param>
-        /// <returns></returns>
         public static uint SteamXor(ref byte[] data, uint size, uint key = 0)
         {
             var offset = (uint)0;
 
-            // Read the first key as the base xor key if we had none given..
             if (key == 0)
             {
                 offset += 4;
                 key = BitConverter.ToUInt32(data, 0);
             }
 
-            // Decode the data..
             for (var x = offset; x < size; x += 4)
             {
                 var val = BitConverter.ToUInt32(data, (int)x);
@@ -66,14 +60,8 @@ namespace Steamless.Unpacker.Variant31.x86.Classes
 
         /// <summary>
         /// The second pass of decryption for the SteamDRMP.dll file.
-        /// 
-        /// @note    The encryption method here is known as XTEA.
+        /// @note The encryption method here is known as XTEA.
         /// </summary>
-        /// <param name="res">The result value buffer to write our returns to.</param>
-        /// <param name="keys">The keys used for the decryption.</param>
-        /// <param name="v1">The first value to decrypt from.</param>
-        /// <param name="v2">The second value to decrypt from.</param>
-        /// <param name="n">The number of passes to crypt the data with.</param>
         public static void SteamDrmpDecryptPass2(ref uint[] res, uint[] keys, uint v1, uint v2, uint n = 32)
         {
             const uint delta = 0x9E3779B9;
@@ -93,24 +81,20 @@ namespace Steamless.Unpacker.Variant31.x86.Classes
 
         /// <summary>
         /// The first pass of the decryption for the SteamDRMP.dll file.
-        /// 
-        /// @note    The encryption method here is known as XTEA. It is modded to include
-        ///          some basic xor'ing.
+        /// @note The encryption method here is known as XTEA. It is modded to include
+        ///       some basic xor'ing.
         /// </summary>
-        /// <param name="data">The data to decrypt.</param>
-        /// <param name="size">The size of the data to decrypt.</param>
-        /// <param name="keys">The keys used for the decryption.</param>
         public static void SteamDrmpDecryptPass1(ref byte[] data, uint size, uint[] keys)
         {
             var v1 = (uint)0x55555555;
             var v2 = (uint)0x55555555;
+            var res = new uint[2];
 
             for (var x = 0; x < size; x += 8)
             {
                 var d1 = BitConverter.ToUInt32(data, x + 0);
                 var d2 = BitConverter.ToUInt32(data, x + 4);
 
-                var res = new uint[2];
                 SteamDrmpDecryptPass2(ref res, keys, d1, d2);
 
                 Array.Copy(BitConverter.GetBytes(res[0] ^ v1), 0, data, x + 0, 4);

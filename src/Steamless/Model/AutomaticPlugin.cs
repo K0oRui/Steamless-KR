@@ -40,101 +40,55 @@ namespace Steamless.Model
     [SteamlessApiVersion(1, 0)]
     internal class AutomaticPlugin : SteamlessPlugin
     {
-        /// <summary>
-        /// Internal logging service instance.
-        /// </summary>
         private LoggingService m_LoggingService;
 
-        /// <summary>
-        /// Gets the author of this plugin.
-        /// </summary>
         public override string Author => "Steamless Development Team";
 
-        /// <summary>
-        /// Gets the name of this plugin.
-        /// </summary>
         public override string Name => "Automatic";
 
-        /// <summary>
-        /// Gets the description of this plugin.
-        /// </summary>
         public override string Description => "Automatically finds which plugin to use for the given file.";
 
-        /// <summary>
-        /// Gets the version of this plugin.
-        /// </summary>
         public override Version Version => new Version(1, 0, 0, 0);
 
-        /// <summary>
-        /// Internal wrapper to log a message.
-        /// </summary>
-        /// <param name="msg"></param>
-        /// <param name="type"></param>
         private void Log(string msg, LogMessageType type)
         {
             this.m_LoggingService.OnAddLogMessage(this, new LogMessageEventArgs(msg, type));
         }
 
-        /// <summary>
-        /// Initialize function called when this plugin is first loaded.
-        /// </summary>
-        /// <param name="logService"></param>
-        /// <returns></returns>
         public override bool Initialize(LoggingService logService)
         {
             this.m_LoggingService = logService;
             return true;
         }
 
-        /// <summary>
-        /// Processing function called when a file is being unpacked. Allows plugins to check the file
-        /// and see if it can handle the file for its intended purpose.
-        /// </summary>
-        /// <param name="file"></param>
-        /// <returns></returns>
         public override bool CanProcessFile(string file)
         {
             return true;
         }
 
-        /// <summary>
-        /// Sibling-aware dispatch. Try each sibling plugin (excluding ourselves),
-        /// fall back to local PE file-format probe if no sibling claims the file.
-        /// </summary>
-        /// <param name="file"></param>
-        /// <param name="options"></param>
-        /// <param name="siblings"></param>
-        /// <returns></returns>
+        // Sibling-aware dispatch: try each sibling plugin, then fall back to a local PE probe.
         public override bool ProcessFile(string file, SteamlessOptions options, IEnumerable<SteamlessPlugin> siblings)
         {
-            // Try each sibling plugin that can handle the file..
-            var ret = siblings.Where(p => p != this)
-                              .Where(p => p.CanProcessFile(file))
-                              .Select(p => p.ProcessFile(file, options,
-                                                         siblings.Where(x => x != p)))
-                              .FirstOrDefault();
-            if (ret)
-                return true;
+            foreach (var sibling in siblings.Where(p => p != this))
+            {
+                if (!sibling.CanProcessFile(file))
+                    continue;
+
+                if (sibling.ProcessFile(file, options, siblings.Where(x => x != sibling)))
+                    return true;
+            }
 
             return this.ProbeFile(file);
         }
 
-        /// <summary>
-        /// Probes the given file to determine if it is a valid PE file packed with
-        /// SteamStub. Returns true if unpacking is possible, false otherwise.
-        /// </summary>
-        /// <param name="file"></param>
-        /// <returns></returns>
         private bool ProbeFile(string file)
         {
             try
             {
-                // First attempt to read the file as 32bit..
                 dynamic f = new Pe32File(file);
 
                 if (f.Parse())
                 {
-                    // Check if the file is 64bit..
                     if (f.IsFile64Bit())
                     {
                         f = new Pe64File(file);
@@ -142,7 +96,6 @@ namespace Steamless.Model
                             return false;
                     }
 
-                    // Ensure the file had a .bind section..
                     if (!f.HasSection(".bind"))
                     {
                         this.Log("", LogMessageType.Error);

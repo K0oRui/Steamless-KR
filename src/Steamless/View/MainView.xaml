@@ -30,7 +30,6 @@
              xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
              mc:Ignorable="d" d:DesignHeight="600" d:DesignWidth="450">
 
-    <!-- Main Content -->
     <Grid x:Name="LayoutRoot" Margin="0,30,0,0">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -40,7 +39,6 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- File Selection -->
         <GroupBox Grid.Row="0" Margin="10" Header="1. Select File To Unpack">
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -64,7 +62,6 @@
             </Grid>
         </GroupBox>
 
-        <!-- Plugin Selection -->
         <GroupBox Grid.Row="1" Margin="10,0,10,10" Header="2. Select Plugin">
             <Grid>
                 <Grid.RowDefinitions>
@@ -74,7 +71,6 @@
             </Grid>
         </GroupBox>
 
-        <!-- Unpacking Options -->
         <GroupBox Grid.Row="2" Margin="10,0,10,10" Header="3. Unpacking Options">
             <Grid>
                 <Grid.RowDefinitions>
@@ -98,7 +94,6 @@
             </Grid>
         </GroupBox>
 
-        <!-- Logging -->
         <GroupBox Grid.Row="3" Margin="10,0,10,10">
             <GroupBox.Header>
                 <Grid HorizontalAlignment="Stretch" Width="{Binding RelativeSource={RelativeSource AncestorType={x:Type GroupBox}}, Path=ActualWidth}">
@@ -140,7 +135,6 @@
             <ListView ItemsSource="{Binding Log}" Style="{DynamicResource LogListView}" />
         </GroupBox>
 
-        <!-- Unpack Button -->
         <Grid Grid.Row="4" Margin="8" Background="Transparent" SnapsToDevicePixels="True">
             <Button Content="Unpack File" Width="125" Margin="2" HorizontalAlignment="Center" VerticalAlignment="Center" Command="{Binding UnpackFileCommand}" />
         </Grid>

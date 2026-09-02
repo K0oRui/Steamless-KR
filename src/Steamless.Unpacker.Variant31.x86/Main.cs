@@ -1,4 +1,4 @@
-﻿#nullable disable
+#nullable disable
 
 /**
  * Steamless - Copyright (c) 2015 - 2024 atom0s [atom0s@live.com]
@@ -45,76 +45,41 @@ namespace Steamless.Unpacker.Variant31.x86
     [SteamlessApiVersion(1, 0)]
     public class Main : SteamlessPlugin
     {
-        /// <summary>
-        /// Internal logging service instance.
-        /// </summary>
         private LoggingService m_LoggingService;
 
-        /// <summary>
-        /// Gets the author of this plugin.
-        /// </summary>
         public override string Author => "atom0s";
 
-        /// <summary>
-        /// Gets the name of this plugin.
-        /// </summary>
         public override string Name => "SteamStub Variant 3.1 Unpacker (x86)";
 
-        /// <summary>
-        /// Gets the description of this plugin.
-        /// </summary>
         public override string Description => "Unpacker for the 32bit SteamStub variant 3.1.";
 
-        /// <summary>
-        /// Gets the version of this plugin.
-        /// </summary>
         public override Version Version => Assembly.GetExecutingAssembly().GetName().Version;
 
-        /// <summary>
-        /// Internal wrapper to log a message.
-        /// </summary>
-        /// <param name="msg"></param>
-        /// <param name="type"></param>
         private void Log(string msg, LogMessageType type)
         {
             this.m_LoggingService.OnAddLogMessage(this, new LogMessageEventArgs(msg, type));
         }
 
-        /// <summary>
-        /// Initialize function called when this plugin is first loaded.
-        /// </summary>
-        /// <param name="logService"></param>
-        /// <returns></returns>
         public override bool Initialize(LoggingService logService)
         {
             this.m_LoggingService = logService;
             return true;
         }
 
-        /// <summary>
-        /// Processing function called when a file is being unpacked. Allows plugins to check the file
-        /// and see if it can handle the file for its intended purpose.
-        /// </summary>
-        /// <param name="file"></param>
-        /// <returns></returns>
         public override bool CanProcessFile(string file)
         {
             try
             {
-                // Load the file..
                 var f = new Pe32File(file);
                 if (!f.Parse() || f.IsFile64Bit() || !f.HasSection(".bind"))
                     return false;
 
-                // Obtain the bind section data..
                 var bind = f.GetSectionData(".bind");
 
-                // Attempt to locate the known v3.x signature..
                 var variant = Pe32Helpers.FindPattern(bind, "E8 00 00 00 00 50 53 51 52 56 57 55 8B 44 24 1C 2D 05 00 00 00 8B CC 83 E4 F0 51 51 51 50");
                 if (variant == -1)
                     return false;
 
-                // Version patterns..
                 var variantPatterns = new List<KeyValuePair<string, int>>
                     {
                         new KeyValuePair<string, int>("55 8B EC 81 EC ?? ?? ?? ?? 53 ?? ?? ?? ?? ?? 68", 0x10),                 // v3.1     [Original version?]
@@ -134,40 +99,31 @@ namespace Steamless.Unpacker.Variant31.x86
                     break;
                 }
 
-                // Ensure valid data was found..
                 if (offset == -1 || headerSize == 0)
                     return false;
 
                 return headerSize == 0xF0;
             }
-            catch
+            catch (Exception)
             {
                 return false;
             }
         }
 
-        /// <summary>
-        /// Processing function called to allow the plugin to process the file.
-        /// </summary>
-        /// <param name="file"></param>
-        /// <param name="options"></param>
-        /// <returns></returns>
         public override bool ProcessFile(string file, SteamlessOptions options)
         {
-            // Initialize the class members..
             this.TlsAsOep = false;
             this.TlsOepRva = 0;
+            this.TlsOepOverride = 0;
             this.Options = options;
             this.CodeSectionData = null;
             this.CodeSectionIndex = -1;
             this.XorKey = 0;
 
-            // Parse the file..
             this.File = new Pe32File(file);
             if (!this.File.Parse())
                 return false;
 
-            // Announce we are being unpacked with this packer..
             this.Log("File is packed with SteamStub Variant 3.1!", LogMessageType.Information);
 
             this.Log("Step 1 - Read, decode and validate the SteamStub DRM header.", LogMessageType.Information);
@@ -204,70 +160,106 @@ namespace Steamless.Unpacker.Variant31.x86
             return true;
         }
 
-        /// <summary>
-        /// Step #1
-        /// 
-        /// Read, decode and validate the SteamStub DRM header.
-        /// </summary>
-        /// <returns></returns>
-        private bool Step1()
+        private bool RebuildTlsCallbackInformation()
         {
-            // Obtain the DRM header data..
-            var fileOffset = this.File.GetFileOffsetFromRva(this.File.NtHeaders.OptionalHeader.AddressOfEntryPoint);
-            var headerData = new byte[0xF0];
-            Array.Copy(this.File.FileData, (int)(fileOffset - 0xF0), headerData, 0, 0xF0);
-
-            // Xor decode the header data..
-            this.XorKey = SteamStubHelpers.SteamXor(ref headerData, 0xF0);
-            this.StubHeader = Pe32Helpers.GetStructure<SteamStub32Var31Header>(headerData);
-
-            // Validate the header signature..
-            if (this.StubHeader.Signature == 0xC0DEC0DF)
-                return true;
-
-            // Try again using the Tls callback (if any) as the OEP instead..
-            if (this.File.TlsCallbacks.Count == 0)
+            var section = this.File.GetOwnerSection(this.File.GetRvaFromVa(this.File.TlsCallbacks[0]));
+            if (!section.IsValid || string.Compare(section.SectionName, ".bind", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.CompareOptions.IgnoreCase) != 0)
                 return false;
 
-            // Obtain the DRM header data..
-            fileOffset = this.File.GetRvaFromVa(this.File.TlsCallbacks[0]);
-            fileOffset = this.File.GetFileOffsetFromRva(fileOffset);
-            headerData = new byte[0xF0];
-            Array.Copy(this.File.FileData, (int)(fileOffset - 0xF0), headerData, 0, 0xF0);
+            var callbackRva = this.File.GetRvaFromVa(this.File.TlsDirectory.AddressOfCallBacks);
+            var addr = this.File.GetFileOffsetFromRva(callbackRva);
+            var tlsd = this.File.GetOwnerSection(callbackRva);
 
-            // Xor decode the header data..
-            this.XorKey = SteamStubHelpers.SteamXor(ref headerData, 0xF0);
-            this.StubHeader = Pe32Helpers.GetStructure<SteamStub32Var31Header>(headerData);
-
-            // Validate the header signature..
-            if (this.StubHeader.Signature != 0xC0DEC0DF)
+            if (!tlsd.IsValid)
                 return false;
 
-            // Tls was valid for the real oep..
-            this.TlsAsOep = true;
-            this.TlsOepRva = this.File.GetRvaFromVa(this.File.TlsCallbacks[0]);
+            addr -= tlsd.PointerToRawData;
+
+            var callback = BitConverter.GetBytes((uint)(this.File.NtHeaders.OptionalHeader.ImageBase + this.StubHeader.OriginalEntryPoint));
+            Array.Copy(callback, 0, this.File.GetSectionData(this.File.GetSectionIndex(tlsd)), (int)addr, callback.Length);
+
+            var entry = (int)this.File.GetFileOffsetFromRva(this.File.NtHeaders.OptionalHeader.AddressOfEntryPoint);
+            var data = new byte[Math.Min(0x100, this.File.FileData.Length - entry)];
+            Array.Copy(this.File.FileData, entry, data, 0, data.Length);
+
+            var res = Pe32Helpers.FindPattern(data, "81 EA ?? ?? ?? ?? 8B 12 81 F2");
+            if (res == -1)
+                return false;
+
+            var key = (uint)(this.StubHeader.XorKey ^ BitConverter.ToInt32(data, (int)res + 0x0A));
+            var off = (uint)((this.File.NtHeaders.OptionalHeader.ImageBase + this.File.NtHeaders.OptionalHeader.AddressOfEntryPoint) + key);
+
+            this.TlsOepOverride = (uint)(off - this.File.NtHeaders.OptionalHeader.ImageBase);
             return true;
         }
 
-        /// <summary>
-        /// Step #2
-        /// 
-        /// Read, decode and process the payload data.
-        /// </summary>
-        /// <returns></returns>
+        private bool Step1()
+        {
+            var headerData = new byte[0xF0];
+
+            // Attempt 1: read the header from EP - 0xF0..
+            var fileOffset = this.File.GetFileOffsetFromRva(this.File.NtHeaders.OptionalHeader.AddressOfEntryPoint);
+            if (fileOffset >= 0xF0)
+            {
+                Array.Copy(this.File.FileData, (int)(fileOffset - 0xF0), headerData, 0, 0xF0);
+                this.XorKey = SteamStubHelpers.SteamXor(ref headerData, 0xF0);
+                this.StubHeader = Pe32Helpers.GetStructure<SteamStub32Var31Header>(headerData);
+                if (this.StubHeader.Signature == 0xC0DEC0DF)
+                    return true;
+            }
+
+            // Attempt 2: read the header from TLS callback - 0xF0..
+            if (this.File.TlsCallbacks.Count > 0)
+            {
+                fileOffset = this.File.GetRvaFromVa(this.File.TlsCallbacks[0]);
+                fileOffset = this.File.GetFileOffsetFromRva(fileOffset);
+                if (fileOffset >= 0xF0)
+                {
+                    headerData = new byte[0xF0];
+                    Array.Copy(this.File.FileData, (int)(fileOffset - 0xF0), headerData, 0, 0xF0);
+                    this.XorKey = SteamStubHelpers.SteamXor(ref headerData, 0xF0);
+                    this.StubHeader = Pe32Helpers.GetStructure<SteamStub32Var31Header>(headerData);
+                    if (this.StubHeader.Signature == 0xC0DEC0DF)
+                    {
+                        this.TlsAsOep = true;
+                        this.TlsOepRva = this.File.GetRvaFromVa(this.File.TlsCallbacks[0]);
+
+                        // Attempt to rebuild TLS callback info; if it fails (e.g. no XOR pattern), still proceed..
+                        this.RebuildTlsCallbackInformation();
+                        return true;
+                    }
+                }
+            }
+
+            // Attempt 3: scan the .bind section for the header.
+            var bindSection = this.File.GetSection(".bind");
+            if (bindSection.IsValid)
+            {
+                var bindData = this.File.GetSectionData(".bind");
+                for (var offset = 0; offset + 0xF0 <= bindData.Length; offset += 4)
+                {
+                    headerData = new byte[0xF0];
+                    Array.Copy(bindData, offset, headerData, 0, 0xF0);
+                    this.XorKey = SteamStubHelpers.SteamXor(ref headerData, 0xF0);
+                    this.StubHeader = Pe32Helpers.GetStructure<SteamStub32Var31Header>(headerData);
+                    if (this.StubHeader.Signature == 0xC0DEC0DF)
+                        return true;
+                }
+            }
+
+            return false;
+        }
+
         private bool Step2()
         {
-            // Obtain the payload address and size..
             var payloadAddr = this.File.GetFileOffsetFromRva(this.TlsAsOep ? this.TlsOepRva - this.StubHeader.BindSectionOffset : this.File.NtHeaders.OptionalHeader.AddressOfEntryPoint - this.StubHeader.BindSectionOffset);
             var payloadSize = (this.StubHeader.PayloadSize + 0x0F) & 0xFFFFFFF0;
 
-            // Do nothing if there is no payload..
             if (payloadSize == 0)
                 return true;
 
             this.Log(" --> File has payload data!", LogMessageType.Debug);
 
-            // Obtain and decode the payload..
             var payload = new byte[payloadSize];
             Array.Copy(this.File.FileData, payloadAddr, payload, 0, payloadSize);
             this.XorKey = SteamStubHelpers.SteamXor(ref payload, payloadSize, this.XorKey);
@@ -280,23 +272,15 @@ namespace Steamless.Unpacker.Variant31.x86
                     this.Log(" --> Saved payload to disk!", LogMessageType.Debug);
                 }
             }
-            catch
+            catch (Exception)
             {
-                // Do nothing here since it doesn't matter if this fails..
             }
 
             return true;
         }
 
-        /// <summary>
-        /// Step #3
-        /// 
-        /// Read, decode and dump the SteamDRMP.dll file.
-        /// </summary>
-        /// <returns></returns>
         private bool Step3()
         {
-            // Ensure there is a dll to process..
             if (this.StubHeader.DRMPDllSize == 0)
             {
                 this.Log(" --> File does not contain a SteamDRMP.dll file.", LogMessageType.Debug);
@@ -307,14 +291,12 @@ namespace Steamless.Unpacker.Variant31.x86
 
             try
             {
-                // Obtain the SteamDRMP.dll file address and data..
                 var drmpAddr = this.File.GetFileOffsetFromRva(this.TlsAsOep ? this.TlsOepRva - this.StubHeader.BindSectionOffset + this.StubHeader.DRMPDllOffset : this.File.NtHeaders.OptionalHeader.AddressOfEntryPoint - this.StubHeader.BindSectionOffset + this.StubHeader.DRMPDllOffset);
                 var drmpSize = (int)Math.Min(this.StubHeader.DRMPDllSize, this.File.FileData.Length - drmpAddr);
                 drmpSize = (drmpSize / 8) * 8; // align to 8 bytes for XTEA
                 var drmpData = new byte[drmpSize];
                 Array.Copy(this.File.FileData, drmpAddr, drmpData, 0, drmpData.Length);
 
-                // Decrypt the data (xtea decryption)..
                 SteamStubHelpers.SteamDrmpDecryptPass1(ref drmpData, (uint)drmpSize, this.StubHeader.EncryptionKeys);
 
                 try
@@ -326,30 +308,21 @@ namespace Steamless.Unpacker.Variant31.x86
                         this.Log(" --> Saved SteamDRMP.dll to disk!", LogMessageType.Debug);
                     }
                 }
-                catch
+                catch (Exception)
                 {
-                    // Do nothing here since it doesn't matter if this fails..
                 }
 
                 return true;
             }
-            catch
+            catch (Exception)
             {
                 this.Log(" --> Error trying to decrypt the files SteamDRMP.dll data!", LogMessageType.Error);
                 return false;
             }
         }
 
-        /// <summary>
-        /// Step #4
-        /// 
-        /// Remove the bind section if requested.
-        /// Find the code section.
-        /// </summary>
-        /// <returns></returns>
         private bool Step4()
         {
-            // Save the .bind section info before removal for later use..
             {
                 var bindSection = this.File.GetSection(".bind");
                 if (bindSection.IsValid)
@@ -359,18 +332,14 @@ namespace Steamless.Unpacker.Variant31.x86
                 }
             }
 
-            // Remove the bind section if its not requested to be saved..
             if (!this.Options.KeepBindSection)
             {
-                // Obtain the .bind section..
                 var bindSection = this.File.GetSection(".bind");
                 if (!bindSection.IsValid)
                     return false;
 
-                // Remove the section..
                 this.File.RemoveSection(bindSection);
 
-                // Decrease the header section count..
                 var ntHeaders = this.File.NtHeaders;
                 ntHeaders.FileHeader.NumberOfSections--;
                 this.File.NtHeaders = ntHeaders;
@@ -380,30 +349,20 @@ namespace Steamless.Unpacker.Variant31.x86
             else
                 this.Log(" --> .bind section was kept in the file.", LogMessageType.Debug);
 
-            // Skip finding the code section if the file is not encrypted..
             if ((this.StubHeader.Flags & (uint)SteamStubDrmFlags.NoEncryption) == (uint)SteamStubDrmFlags.NoEncryption)
                 return true;
 
-            // Find the code section..
             var codeSection = this.File.GetOwnerSection(this.StubHeader.CodeSectionVirtualAddress);
             if (codeSection.PointerToRawData == 0 || codeSection.SizeOfRawData == 0)
                 return false;
 
-            // Store the code sections index..
             this.CodeSectionIndex = this.File.GetSectionIndex(codeSection);
 
             return true;
         }
 
-        /// <summary>
-        /// Step #5
-        /// 
-        /// Read, decrypt and process the code section.
-        /// </summary>
-        /// <returns></returns>
         private bool Step5()
         {
-            // Skip decryption if the code section is not encrypted..
             if ((this.StubHeader.Flags & (uint)SteamStubDrmFlags.NoEncryption) == (uint)SteamStubDrmFlags.NoEncryption)
             {
                 this.Log(" --> Code section is not encrypted.", LogMessageType.Debug);
@@ -412,26 +371,21 @@ namespace Steamless.Unpacker.Variant31.x86
 
             try
             {
-                // Obtain the code section..
                 var codeSection = this.File.Sections[this.CodeSectionIndex];
                 this.Log($" --> {codeSection.SectionName} linked as main code section.", LogMessageType.Debug);
                 this.Log($" --> {codeSection.SectionName} section is encrypted.", LogMessageType.Debug);
 
-                // Obtain the code section data..
                 var codeSectionData = new byte[(long)this.StubHeader.CodeSectionRawSize + this.StubHeader.CodeSectionStolenData.Length];
                 Array.Copy(this.StubHeader.CodeSectionStolenData, 0, codeSectionData, 0, this.StubHeader.CodeSectionStolenData.Length);
                 Array.Copy(this.File.FileData, this.File.GetFileOffsetFromRva(codeSection.VirtualAddress), codeSectionData, this.StubHeader.CodeSectionStolenData.Length, (long)this.StubHeader.CodeSectionRawSize);
 
-                // Create the AES decryption helper..
                 var aes = new AesHelper(this.StubHeader.AES_Key, this.StubHeader.AES_IV);
                 aes.RebuildIv(this.StubHeader.AES_IV);
 
-                // Decrypt the code section data..
                 var data = aes.Decrypt(codeSectionData, CipherMode.CBC, PaddingMode.None);
                 if (data == null)
                     return false;
 
-                // Merge the code section data into the original..
                 if (this.CodeSectionIndex < 0)
                 {
                     this.Log(" --> Error: could not resolve code section index!", LogMessageType.Error);
@@ -445,24 +399,18 @@ namespace Steamless.Unpacker.Variant31.x86
 
                 return true;
             }
-            catch
+            catch (Exception)
             {
                 this.Log(" --> Error trying to decrypt the files code section data!", LogMessageType.Error);
                 return false;
             }
         }
 
-        /// <summary>
-        /// Scans .rdata section data for the original import descriptor table.
-        /// </summary>
         private uint FindImportDescriptorInRdata(byte[] rdataData, uint rdataRva)
         {
             return FindImportByDllNamePattern(rdataData, rdataRva);
         }
 
-        /// <summary>
-        /// Scans .rdata for import descriptors by searching for DLL name RVA patterns.
-        /// </summary>
         private uint FindImportByDllNamePattern(byte[] rdataData, uint rdataRva)
         {
             for (int offset = 0; offset < rdataData.Length - 20; offset += 4)
@@ -496,39 +444,30 @@ namespace Steamless.Unpacker.Variant31.x86
             return 0;
         }
 
-        /// <summary>
-        /// Step #6
-        /// 
-        /// Rebuild and save the unpacked file.
-        /// </summary>
-        /// <returns></returns>
         private bool Step6()
         {
             FileStream fStream = null;
 
             try
             {
-                // Zero the DosStubData if desired..
                 if (this.Options.ZeroDosStubData && this.File.DosStubSize > 0)
                     this.File.DosStubData = Enumerable.Repeat((byte)0, (int)this.File.DosStubSize).ToArray();
 
-                // Rebuild the file sections..
                 this.File.RebuildSections(this.Options.DontRealignSections == false);
 
-                // Open the unpacked file for writing..
                 var unpackedPath = this.File.FilePath + ".unpacked.exe";
                 fStream = new FileStream(unpackedPath, FileMode.Create, FileAccess.ReadWrite);
 
-                // Write the DOS header to the file..
                 fStream.WriteBytes(Pe32Helpers.GetStructureBytes(this.File.DosHeader));
 
-                // Write the DOS stub to the file..
                 if (this.File.DosStubSize > 0)
                     fStream.WriteBytes(this.File.DosStubData);
 
-                // Update the NT headers..
                 var ntHeaders = this.File.NtHeaders;
-                ntHeaders.OptionalHeader.AddressOfEntryPoint = (uint)this.StubHeader.OriginalEntryPoint;
+                if (this.TlsOepOverride > 0)
+                    ntHeaders.OptionalHeader.AddressOfEntryPoint = this.TlsOepOverride;
+                else
+                    ntHeaders.OptionalHeader.AddressOfEntryPoint = (uint)this.StubHeader.OriginalEntryPoint;
                 ntHeaders.OptionalHeader.CheckSum = 0;
 
                 // Fix the import table entry if it points into the removed .bind section..
@@ -568,37 +507,29 @@ namespace Steamless.Unpacker.Variant31.x86
 
                 this.File.NtHeaders = ntHeaders;
 
-                // Write the NT headers to the file..
                 fStream.WriteBytes(Pe32Helpers.GetStructureBytes(ntHeaders));
 
-                // Write the sections to the file..
                 for (var x = 0; x < this.File.Sections.Count; x++)
                 {
                     var section = this.File.Sections[x];
                     var sectionData = this.File.SectionData[x];
 
-                    // Write the section header to the file..
                     fStream.WriteBytes(Pe32Helpers.GetStructureBytes(section));
 
-                    // Set the file pointer to the sections raw data..
                     var sectionOffset = fStream.Position;
                     fStream.Position = section.PointerToRawData;
 
-                    // Write the sections raw data..
                     var sectionIndex = this.File.Sections.IndexOf(section);
                     if (sectionIndex == this.CodeSectionIndex)
                         fStream.WriteBytes(this.CodeSectionData ?? sectionData);
                     else
                         fStream.WriteBytes(sectionData);
 
-                    // Reset the file offset..
                     fStream.Position = sectionOffset;
                 }
 
-                // Set the stream to the end of the file..
                 fStream.Position = fStream.Length;
 
-                // Write the overlay data if it exists..
                 if (this.File.OverlayData != null)
                     fStream.WriteBytes(this.File.OverlayData);
 
@@ -607,7 +538,7 @@ namespace Steamless.Unpacker.Variant31.x86
 
                 return true;
             }
-            catch
+            catch (Exception)
             {
                 this.Log(" --> Error trying to save unpacked file!", LogMessageType.Error);
                 return false;
@@ -618,12 +549,6 @@ namespace Steamless.Unpacker.Variant31.x86
             }
         }
 
-        /// <summary>
-        /// Step #7
-        /// 
-        /// Recalculate the file checksum.
-        /// </summary>
-        /// <returns></returns>
         private bool Step7()
         {
             var unpackedPath = this.File.FilePath + ".unpacked.exe";
@@ -638,54 +563,26 @@ namespace Steamless.Unpacker.Variant31.x86
 
         }
 
-        /// <summary>
-        /// Gets or sets if the Tls callback is being used as the Oep.
-        /// </summary>
         private bool TlsAsOep { get; set; }
 
-        /// <summary>
-        /// Gets or sets the Tls Oep Rva if it is being used as the Oep.
-        /// </summary>
         private uint TlsOepRva { get; set; }
 
-        /// <summary>
-        /// Gets or sets the Steamless options this file was requested to process with.
-        /// </summary>
+        private uint TlsOepOverride { get; set; }
+
         private SteamlessOptions Options { get; set; }
 
-        /// <summary>
-        /// Gets or sets the file being processed.
-        /// </summary>
         private Pe32File File { get; set; }
 
-        /// <summary>
-        /// Gets or sets the current xor key being used against the file data.
-        /// </summary>
         private uint XorKey { get; set; }
 
-        /// <summary>
-        /// Gets or sets the DRM stub header.
-        /// </summary>
         private SteamStub32Var31Header StubHeader { get; set; }
 
-        /// <summary>
-        /// Gets or sets the index of the code section.
-        /// </summary>
         private int CodeSectionIndex { get; set; }
 
-        /// <summary>
-        /// Gets or sets the decrypted code section data.
-        /// </summary>
         private byte[] CodeSectionData { get; set; }
 
-        /// <summary>
-        /// Gets or sets the .bind section virtual address.
-        /// </summary>
         private uint BindSectionRva { get; set; }
 
-        /// <summary>
-        /// Gets or sets the .bind section virtual size.
-        /// </summary>
         private uint BindSectionSize { get; set; }
 
 

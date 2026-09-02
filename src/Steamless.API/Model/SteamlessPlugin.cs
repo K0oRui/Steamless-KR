@@ -32,102 +32,50 @@ namespace Steamless.API.Model
 
     public abstract class SteamlessPlugin : IDisposable
     {
-        /// <summary>
-        /// Gets the author of this plugin.
-        /// </summary>
         public virtual string Author => "Steamless Development Team";
 
-        /// <summary>
-        /// Gets the name of this plugin.
-        /// </summary>
         public virtual string Name => "Steamless Plugin";
 
-        /// <summary>
-        /// Gets the description of this plugin.
-        /// </summary>
         public virtual string Description => "The Steamless base plugin class.";
 
-        /// <summary>
-        /// Gets the version of this plugin.
-        /// </summary>
         public virtual Version Version => new Version(1, 0, 0, 0);
 
-        /// <summary>
-        /// Deconstructor
-        /// </summary>
         ~SteamlessPlugin()
         {
             this.Dispose(false);
         }
 
-        /// <summary>
-        /// IDisposable implementation.
-        /// </summary>
         public void Dispose()
         {
             this.Dispose(true);
             GC.SuppressFinalize(this);
         }
 
-        /// <summary>
-        /// IDisposable implementation.
-        /// </summary>
-        /// <param name="disposing"></param>
         protected virtual void Dispose(bool disposing)
         {
         }
 
-        /// <summary>
-        /// Initialize function called when this plugin is first loaded.
-        /// </summary>
-        /// <param name="logService"></param>
-        /// <returns></returns>
         public virtual bool Initialize(LoggingService logService)
         {
             return false;
         }
 
-        /// <summary>
-        /// Processing function called when a file is being unpacked. Allows plugins to check the file
-        /// and see if it can handle the file for its intended purpose.
-        /// </summary>
-        /// <param name="file"></param>
-        /// <returns></returns>
         public virtual bool CanProcessFile(string file)
         {
             return false;
         }
 
-        /// <summary>
-        /// Processing function called to allow the plugin to process the file.
-        /// </summary>
-        /// <param name="file"></param>
-        /// <param name="options"></param>
-        /// <returns></returns>
         public virtual bool ProcessFile(string file, SteamlessOptions options)
         {
             return false;
         }
 
-        /// <summary>
-        /// Sibling-aware entry point. Default delegates to the 2-arg version.
-        /// Override this to access the full plugin list for dispatch decisions.
-        /// </summary>
-        /// <param name="file"></param>
-        /// <param name="options"></param>
-        /// <param name="siblings"></param>
-        /// <returns></returns>
+        // Sibling-aware entry point: passes the full plugin list so dispatch logic can consider other plugins.
         public virtual bool ProcessFile(string file, SteamlessOptions options, System.Collections.Generic.IEnumerable<SteamlessPlugin> siblings)
         {
             return this.ProcessFile(file, options);
         }
 
-        /// <summary>
-        /// Returns a string that represents the current object.
-        /// </summary>
-        /// <returns>
-        /// A string that represents the current object.
-        /// </returns>
         public string DisplayName => this.Name + " - " + this.Description;
     }
 }

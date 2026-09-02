@@ -31,17 +31,11 @@ namespace Steamless.Model.Tasks
 
     public class StartSteamlessTask : BaseTask
     {
-        /// <summary>
-        /// Default Constructor
-        /// </summary>
         public StartSteamlessTask()
         {
             this.Text = "Starting Steamless...";
         }
 
-        /// <summary>
-        /// The tasks main function to execute when started.
-        /// </summary>
         public override async Task DoTask()
         {
             await Task.Delay(1000);

@@ -29,16 +29,11 @@ namespace Steamless.Classes
 {
     using System.Windows;
 
-    /// <summary>
-    /// Contains helper functions for WPF controls.
-    /// 
-    /// Credits to the functions within this class:
-    /// https://github.com/MahApps/MahApps.Metro
-    /// </summary>
+    // Credits to the functions within this class: https://github.com/MahApps/MahApps.Metro
     public static class ControlsHelper
     {
         /// <summary>
-        /// This property can be used to set vertical scrollbar left side from the tabpanel (look at MetroAnimatedSingleRowTabControl)
+        /// Places the vertical scrollbar on the left side of the tab panel (see MetroAnimatedSingleRowTabControl).
         /// </summary>
         public static readonly DependencyProperty VerticalScrollBarOnLeftSideProperty =
             DependencyProperty.RegisterAttached("VerticalScrollBarOnLeftSide", typeof(bool), typeof(ControlsHelper),

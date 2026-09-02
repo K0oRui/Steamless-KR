@@ -31,7 +31,6 @@
              mc:Ignorable="d" d:DesignHeight="600" d:DesignWidth="450" 
              SnapsToDevicePixels="True">
 
-    <!-- Main Content -->
     <Grid x:Name="LayoutRoot" SnapsToDevicePixels="True">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -42,7 +41,6 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- Logo -->
         <StackPanel Grid.Row="0" Margin="0">
             <Image Source="../Assets/steam.png" Width="150" Margin="0" />
             <Label Content="Steamless" FontSize="32" FontWeight="Bold" HorizontalAlignment="Center" Margin="0" Padding="0" SnapsToDevicePixels="True" RenderOptions.EdgeMode="Aliased">
@@ -59,7 +57,6 @@
             <TextBlock Foreground="#F7F7F7" HorizontalAlignment="Center" VerticalAlignment="Center" Text="{Binding SteamlessVersion, FallbackValue='0.0.0.0', StringFormat={}Version: {0}}" />
         </StackPanel>
 
-        <!-- Project Links -->
         <Border Grid.Row="1" Margin="0,15,0,0" Background="#80000000" BorderBrush="#40595959" BorderThickness="0,1,0,1" ClipToBounds="True">
             <Border Background="Transparent" BorderBrush="#40595959" BorderThickness="0,10,0,0" Margin="0,-11,0,2">
                 <Border.Effect>
@@ -176,7 +173,6 @@
             </Border>
         </Border>
 
-        <!-- Donation Info -->
         <StackPanel Grid.Row="2" HorizontalAlignment="Center" Margin="0,0,0,0">
             <StackPanel.Resources>
                 <Style x:Key="StackPanelLabelCenter" TargetType="{x:Type Label}">
@@ -269,7 +265,6 @@
             </StackPanel>
         </StackPanel>
 
-        <!-- Credits -->
         <StackPanel Grid.Row="3" Margin="0">
             <StackPanel HorizontalAlignment="Center" Margin="0,0,0,0">
                 <StackPanel.Resources>
@@ -298,7 +293,6 @@
             </StackPanel>
         </StackPanel>
 
-        <!-- Important Information, Legal, Notes -->
         <Border Grid.Row="4" BorderBrush="#595959" BorderThickness="1" Margin="5">
             <Border.Background>
                 <LinearGradientBrush StartPoint=".5,0" EndPoint=".5,1" RenderOptions.EdgeMode="Aliased">
@@ -324,7 +318,6 @@
                         <Style BasedOn="{StaticResource LegalInformationTextBlock}" TargetType="{x:Type TextBlock}" />
                     </StackPanel.Resources>
 
-                    <!-- Donation Information -->
                     <Label Content="Donations" Style="{StaticResource LegalInformationLabelHeader}" />
                     <TextBlock>
                             Steamless is provided, as-is, for free. Donations are a way for users to show their support for my work.
@@ -332,7 +325,6 @@
                             not contact me attempting to get help with pirating a game or any other illegal activity, I will not respond.
                     </TextBlock>
 
-                    <!-- Legal Information -->
                     <Label Content="Legal Information / Warranty" Style="{StaticResource LegalInformationLabelHeader}" />
                     <TextBlock>
                             Steamless is released under the following license:
@@ -362,7 +354,6 @@
             </ScrollViewer>
         </Border>
 
-        <!-- Close Button -->
         <Button Grid.Row="5" Content="Close" Width="125" Margin="4" HorizontalAlignment="Center" VerticalAlignment="Center" Command="{Binding ToggleAboutViewCommand}" />
     </Grid>
 </UserControl>

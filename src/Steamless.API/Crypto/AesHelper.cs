@@ -1,4 +1,4 @@
-﻿#nullable disable
+#nullable disable
 
 /**
  * Steamless - Copyright (c) 2015 - 2024 atom0s [atom0s@live.com]
@@ -34,36 +34,16 @@ namespace Steamless.API.Crypto
 
     public class AesHelper : IDisposable
     {
-        /// <summary>
-        /// Internal original key set by the user of this class.
-        /// </summary>
         private readonly byte[] m_OriginalKey;
-
-        /// <summary>
-        /// Internal original iv set by the user of this class.
-        /// </summary>
         private readonly byte[] m_OriginalIv;
-
-        /// <summary>
-        /// Internal AES crypto provider.
-        /// </summary>
         private Aes m_AesCryptoProvider;
 
-        /// <summary>
-        /// Default Constructor
-        /// </summary>
-        /// <param name="key"></param>
-        /// <param name="iv"></param>
-        /// <param name="mode"></param>
-        /// <param name="padding"></param>
         // codeql[cs/ecb-encryption] ECB mode required for SteamStub variant compatibility
         public AesHelper(byte[] key, byte[] iv, CipherMode mode = CipherMode.ECB, PaddingMode padding = PaddingMode.None)
         {
-            // Store the original key and iv..
             this.m_OriginalKey = key;
             this.m_OriginalIv = iv;
 
-            // Create the AES crypto provider..
             this.m_AesCryptoProvider = Aes.Create();
             this.m_AesCryptoProvider.Key = key;
             this.m_AesCryptoProvider.IV = iv;
@@ -71,41 +51,25 @@ namespace Steamless.API.Crypto
             this.m_AesCryptoProvider.Padding = padding;
         }
 
-        /// <summary>
-        /// Default Deconstructor
-        /// </summary>
         ~AesHelper()
         {
             this.Dispose(false);
         }
 
-        /// <summary>
-        /// IDispose implementation.
-        /// </summary>
         public void Dispose()
         {
             this.Dispose(true);
             GC.SuppressFinalize(this);
         }
 
-        /// <summary>
-        /// IDispose implementation.
-        /// </summary>
-        /// <param name="disposing"></param>
         protected virtual void Dispose(bool disposing)
         {
             this.m_AesCryptoProvider?.Dispose();
             this.m_AesCryptoProvider = null;
         }
 
-        /// <summary>
-        /// Rebuilds the current iv (or the one given).
-        /// </summary>
-        /// <param name="iv"></param>
-        /// <returns></returns>
         public bool RebuildIv(byte[] iv = null)
         {
-            // Use the current iv if none is set..
             if (iv == null)
                 iv = this.m_OriginalIv;
 
@@ -116,19 +80,12 @@ namespace Steamless.API.Crypto
                     return decryptor.TransformBlock(iv, 0, iv.Length, this.m_OriginalIv, 0) > 0;
                 }
             }
-            catch
+            catch (Exception)
             {
                 return false;
             }
         }
 
-        /// <summary>
-        /// Decrypts the given data using the given mode and padding.
-        /// </summary>
-        /// <param name="data"></param>
-        /// <param name="mode"></param>
-        /// <param name="padding"></param>
-        /// <returns></returns>
         public byte[] Decrypt(byte[] data, CipherMode mode, PaddingMode padding)
         {
             ICryptoTransform decryptor = null;
@@ -137,28 +94,25 @@ namespace Steamless.API.Crypto
 
             try
             {
-                // Update the mode and padding for the decryption..
                 this.m_AesCryptoProvider.Mode = mode;
                 this.m_AesCryptoProvider.Padding = padding;
 
-                // Create the decryptor..
                 decryptor = this.m_AesCryptoProvider.CreateDecryptor(this.m_OriginalKey, this.m_OriginalIv);
 
-                // Create a memory stream for our data..
                 mStream = new MemoryStream(data);
 
-                // Create the crypto stream..
                 cStream = new CryptoStream(mStream, decryptor, CryptoStreamMode.Read);
 
-                // Decrypt the data..
                 var totalBuffer = new List<byte>();
                 var buffer = new byte[16];
-                while ((cStream.Read(buffer, 0, 16)) > 0)
-                    totalBuffer.AddRange(buffer);
+                int read;
+                // Read can return fewer than 16 bytes; append only the bytes actually read.
+                while ((read = cStream.Read(buffer, 0, 16)) > 0)
+                    totalBuffer.AddRange(buffer.AsSpan(0, read));
 
                 return totalBuffer.ToArray();
             }
-            catch
+            catch (Exception)
             {
                 return null;
             }

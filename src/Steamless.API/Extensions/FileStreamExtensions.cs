@@ -31,11 +31,6 @@ namespace Steamless.API.Extensions
 
     public static class FileStreamExtensions
     {
-        /// <summary>
-        /// Writes a byte array to the file stream.
-        /// </summary>
-        /// <param name="fStream"></param>
-        /// <param name="data"></param>
         public static void WriteBytes(this FileStream fStream, byte[] data)
         {
             fStream.Write(data, 0, data.Length);

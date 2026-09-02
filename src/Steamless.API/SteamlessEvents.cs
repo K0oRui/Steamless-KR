@@ -32,18 +32,8 @@ namespace Steamless.API
 
     public class SteamlessEvents
     {
-        /// <summary>
-        /// Log message event handler.
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
         public delegate void AddLogMessageEventHandler(object sender, LogMessageEventArgs e);
 
-        /// <summary>
-        /// Clear log messages event handler.
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
         public delegate void ClearLogMessagesEventHandler(object sender, EventArgs e);
     }
 }

@@ -35,15 +35,15 @@ namespace Steamless.Unpacker.Variant10.x86.Classes
     [StructLayout(LayoutKind.Sequential)]
     public struct SteamStub32Var10Header
     {
-        public uint GetModuleHandleA_idata;     // The address of GetModuleHandleA inside of the .idata section.
-        public uint GetProcAddress_idata;       // The address of GetProcAddress inside of the .idata section.
-        public uint BindFunction;               // The .bind unpacker function address.
-        public uint BindCodeSize;               // The .bind unpacker function size.
+        public uint GetModuleHandleA_idata;
+        public uint GetProcAddress_idata;
+        public uint BindFunction;
+        public uint BindCodeSize;
         public uint Checksum;                   // The checksum of the header data after its initialized. (This is done via addition chunking.)
         public uint AppId;
 
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 0x08)]
-        public byte[] SteamAppIDString;         // The SteamAppID of the packed file, in string format.
+        public byte[] SteamAppIDString;
 
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 0x10)]
         public byte[] str_kernel32dll;          // String: kernel32.dll

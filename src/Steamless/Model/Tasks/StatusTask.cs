@@ -31,18 +31,11 @@ namespace Steamless.Model.Tasks
 
     public class StatusTask : BaseTask
     {
-        /// <summary>
-        /// Default Constructor
-        /// </summary>
-        /// <param name="msg"></param>
         public StatusTask(string msg)
         {
             this.Text = msg;
         }
 
-        /// <summary>
-        /// The tasks main function to execute when started.
-        /// </summary>
         public override async Task DoTask()
         {
             await Task.Delay(1000);

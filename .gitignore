@@ -157,6 +157,9 @@ csx/
 # Windows Store app package directory
 AppPackages/
 
+# Test executables (large binaries, not source)
+tests/
+
 # Others
 *.[Cc]ache
 ClientBin/

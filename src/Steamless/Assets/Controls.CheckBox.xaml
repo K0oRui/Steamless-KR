@@ -25,7 +25,6 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!-- Control: CheckBox -->
     <SolidColorBrush x:Key="OptionMark.Static.Background" Color="#FFFFFFFF"/>
     <SolidColorBrush x:Key="OptionMark.Static.Border" Color="#FF707070"/>
     <Style x:Key="OptionMarkFocusVisual">
