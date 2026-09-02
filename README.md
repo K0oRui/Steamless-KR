@@ -47,6 +47,7 @@
 > - Variant 3.1 x86: `CodeSectionIndex` guard added with error logging.
 >
 > Original upstream: [atom0s/Steamless](https://github.com/atom0s/Steamless)
+> Modernization originally developed in: [TheReaperJay/Steamless](https://github.com/TheReaperJay/Steamless)
 
 Steamless removes the SteamStub DRM protection from Steam games and applications. It handles every known variant, from the first version to the most recent.
 
