@@ -77,7 +77,7 @@ jobs:
           cp "$CLI_DIR/"* dist/
 
           if [ -f "dist/Steamless.API.dll" ]; then
-            mv dist/Steamless.API.dll dist/Plugins/
+            cp dist/Steamless.API.dll dist/Plugins/
           fi
 
           echo "=== Plugin DLLs ==="
