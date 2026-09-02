@@ -10,41 +10,46 @@
 
 # Steamless
 
-> **Fork** — this repository contains fixes, improvements, and modernization not yet upstreamed.
+> **Fork.** This repository contains fixes, improvements, and modernization not yet upstreamed.
 >
 > ## Modernization
-> - **.NET 9.0 migration** — upgraded from .NET Framework 4.5.2 / .NET 5 to .NET 9.0. SDK pinned via `global.json` (rollForward to latestMajor).
-> - **Nullable reference types** — enabled project-wide; existing code opted out with `#nullable disable` for gradual migration.
-> - **AssemblyInfo cleanup** — deleted all 11 legacy `Properties/AssemblyInfo.cs` files; metadata now auto-generated from SDK-style `.csproj` properties.
-> - **SharpDisasm → Iced** — replaced the abandoned SharpDisasm (native dependency, unmaintained) with Iced v1.21.0 (100% C#, MIT, by 0xd4d/dnlib author) in Variant 2.0 and 2.1 unpackers.
-> - **AesHelper modernization** — `AesCryptoServiceProvider` → `Aes.Create()`.
-> - **Async pattern cleanup** — removed `async void` methods; added `CancellationToken` support; `Thread.Sleep` → `Task.Delay`.
-> - **CLI improvements** — distinct exit codes (1-4); bare `catch {}` replaced with logged stderr output.
-> - **Infrastructure added** — `.editorconfig`, `.gitattributes`, `.gitignore`, `Directory.Build.props`, `global.json`.
-> - **Repo structure** — all source moved under `src/`, logo moved to `assets/`, stale files removed.
+>
+> - .NET 9.0. Upgraded from .NET Framework 4.5.2 / .NET 5. SDK pinned via `global.json` (rollForward to latestMajor).
+> - MvvmLight replaced with CommunityToolkit.Mvvm. DI now uses Microsoft.Extensions.DependencyInjection.
+> - SharpDisasm replaced with Iced in the Variant 2.0 and 2.1 unpackers. SharpDisasm is abandoned and ships a native dependency; Iced is pure C#.
+> - Nullable reference types enabled project-wide. Existing files opt out with `#nullable disable`.
+> - All 11 legacy `Properties/AssemblyInfo.cs` files deleted. Metadata now comes from SDK-style `.csproj` properties.
+> - `AesCryptoServiceProvider` replaced with `Aes.Create()`.
+> - `async void` removed. `Thread.Sleep` replaced with `Task.Delay`; tasks take a `CancellationToken`.
+> - CLI returns distinct exit codes (1-4) and logs errors to stderr instead of swallowing them.
+> - Added `.editorconfig`, `.gitattributes`, `.gitignore`, `Directory.Build.props`, `global.json`.
+> - Source moved under `src/`, logo under `assets/`, stale files removed.
 >
 > ## Fixes
-> - **PE buffer underflow** — `GetStructure<T>` now checks `offset + size` instead of just `size`.
-> - **MemoryMarshal revert** — PE structs contain non-blittable `[MarshalAs(ByValArray)] ushort[]` fields that `MemoryMarshal.Read<T>` cannot handle. Reverted to `Marshal.PtrToStructure`.
-> - **PlatformTarget fix** — all plugins now build as AnyCPU (MSIL) so they load in a 64-bit host process.
-> - **PE header offset corruption** — `Unsafe.SizeOf` returns wrong value for non-blittable DOS header structs, causing `DosStubSize` undercount and shifted PE signature. Fixed by using `Marshal.SizeOf` consistently.
-> - **FindPattern performance** — LINQ allocations on every byte + OOB crash risk. Replaced with plain nested loop and bounds check.
-> - **PE checksum algorithm** — existing `CheckSum` field not zeroed before computation. Fixed in `UpdateFileChecksum`.
-> - **GetSectionData OBO** — `>` instead of `>=` allowed accessing `Sections.Count` as a valid index.
+>
+> - PE buffer underflow. `GetStructure<T>` checks `offset + size` against the buffer length, not just `size`.
+> - MemoryMarshal revert. The DOS header struct has non-blittable `[MarshalAs(ByValArray)] ushort[]` fields, which `MemoryMarshal.Read<T>` can't handle. `GetStructure<T>` uses `Marshal.PtrToStructure` again.
+> - PE header offset corruption. `Unsafe.SizeOf` returns the wrong size for the non-blittable DOS header, which undercounted `DosStubSize` and shifted the PE signature. `Marshal.SizeOf` is used consistently now.
+> - PlatformTarget. All plugins build as AnyCPU so they load in a 64-bit host process.
+> - FindPattern. The LINQ-per-byte scan could read out of bounds. Replaced with a nested loop and a bounds check.
+> - PE checksum. The existing `CheckSum` field wasn't zeroed before computing the new value. Fixed in `UpdateFileChecksum`.
+> - GetSectionData off-by-one. `>` let `Sections.Count` be used as a valid index; now `>=`.
 >
 > ## Variant 2.1
-> - **DRMP offset extraction with fallback chain** — if the hardcoded offset pattern fails, falls back to dynamic disassembly or exhaustive scan (`ScanSteamDrmpOffsets`) to locate valid DRMP offsets.
-> - **Code section decryption fix** — stolen bytes excluded from AES-CBC decryption; prepended afterward.
-> - **Import table reconstruction** — when `.bind` is removed, the import directory entry is relocated to the real descriptor table in `.rdata` via DLL name matching.
-> - **Certificate table fix** — Authenticode Security directory file offset updated to the new overlay position after `.bind` removal.
 >
-> ## Refactoring (all variants)
-> - Dead code removed across all unpackers: unused parameters, dead properties, stale string scanning loops.
-> - `FindImportDescriptorInRdata` signature cleaned up (removed unused `currentImport` parameter) — all 5 x86 variants.
-> - Variant 2.1: state properties changed from `public` to `private`; `TryGetSteamDrmpOffsets` removed; safe slicing with bounds checks.
-> - Variant 2.0: logic bug in `DisassembleFile` fixed (duplicated conditions → clean `if/else if`); dead payload properties removed.
-> - Variant 3.0 x64: `RebuildTlsCallbackInformation` optimized (LINQ → `Array.Copy`).
+> - DRMP offset extraction with a fallback chain. If the hardcoded offset patterns fail, it tries dynamic disassembly, then an exhaustive scan (`ScanSteamDrmpOffsets`), validating each candidate.
+> - Code section located via the OEP when the stored VA offset is zero. Some SteamDRMP variants don't store that field.
+> - Import table reconstruction. When `.bind` is removed, the import directory entry is relocated to the real descriptor table in `.rdata` by matching DLL names.
+> - Certificate table fix. The Authenticode security directory file offset is updated to the new overlay position after `.bind` removal.
+>
+> ## Refactoring
+>
+> - Import table reconstruction extended to all five x86 variants (Variant 1.0, 2.0, 2.1, 3.0, 3.1).
+> - Variant 2.0: `DisassembleFile` had two identical `mov reg, imm` checks; merged into one `if/else if`.
+> - Variant 3.0 x64: `RebuildTlsCallbackInformation` uses `Array.Copy` instead of LINQ and bounds-checks the entry data.
 > - Variant 3.1 x86: `CodeSectionIndex` guard added with error logging.
+> - Variant 2.1: state properties are `private`; `TryGetSteamDrmpOffsets` removed; slicing bounds-checked.
+> - Dead code removed across the unpackers: unused parameters, dead properties, stale string scans.
 >
 > Original upstream: [atom0s/Steamless](https://github.com/atom0s/Steamless)
 > Modernization originally developed in: [TheReaperJay/Steamless](https://github.com/TheReaperJay/Steamless)
@@ -151,7 +156,7 @@ dotnet run --project .\src\Steamless -c Release
 
 **Notes:**
 - Source code is under `src/`. All plugin DLLs are loaded dynamically from `Plugins/` at runtime. After building, copy the plugin DLLs and `Iced.dll` (for Variant 2.x) into the output `Plugins/` folder, or use the provided CI scripts.
-- All plugin assemblies are AnyCPU (MSIL) — they load correctly in both 32-bit and 64-bit host processes.
+- All plugin assemblies are AnyCPU (MSIL), so they load in both 32-bit and 64-bit host processes.
 - The solution can be built from Visual Studio or the `dotnet` CLI.
 
 # Contributing
