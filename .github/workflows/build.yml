@@ -169,7 +169,8 @@ jobs:
         shell: bash
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          
+          REPO_URL="https://github.com/${{ github.repository }}/commit"
+
           git fetch --tags --force
 
           PREV_TAG=$(git describe --tags --abbrev=0 --exclude="$VERSION" 2>/dev/null || \
@@ -180,14 +181,50 @@ jobs:
           echo "Previous Tag: ${PREV_TAG:-<none>}"
 
           if [ -n "$PREV_TAG" ]; then
-            git log "$PREV_TAG"..HEAD --pretty=format:"* %s (%h)" --no-merges > changelog.txt
+            COMMITS=$(git log "$PREV_TAG"..HEAD --pretty=format:"%s|||%h" --no-merges)
           else
-            git log -20 --pretty=format:"* %s (%h)" --no-merges > changelog.txt
+            COMMITS=$(git log -30 --pretty=format:"%s|||%h" --no-merges)
           fi
 
-          if [ ! -s changelog.txt ]; then
-            echo "* Initial release or no new commits since last tag." > changelog.txt
-          fi
+          FEATS="" FIXES="" REFACTORS="" CIS="" STYLES="" DOCS="" CHORES="" OTHERS=""
+
+          while IFS= read -r line; do
+            [ -z "$line" ] && continue
+            MSG="${line%%|||*}"
+            HASH="${line##*|||}"
+            ENTRY="- ${MSG} ([${HASH}](${REPO_URL}/${HASH}))"
+
+            case "$MSG" in
+              feat:*)     FEATS="${FEATS}${ENTRY}"$'\n' ;;
+              fix:*)      FIXES="${FIXES}${ENTRY}"$'\n' ;;
+              refactor:*) REFACTORS="${REFACTORS}${ENTRY}"$'\n' ;;
+              ci:*)       CIS="${CIS}${ENTRY}"$'\n' ;;
+              style:*)    STYLES="${STYLES}${ENTRY}"$'\n' ;;
+              docs:*)     DOCS="${DOCS}${ENTRY}"$'\n' ;;
+              chore:*)    CHORES="${CHORES}${ENTRY}"$'\n' ;;
+              *)          OTHERS="${OTHERS}${ENTRY}"$'\n' ;;
+            esac
+          done <<< "$COMMITS"
+
+          strip_prefix() {
+            echo "$1" | sed -E 's/^- (feat|fix|refactor|ci|style|docs|chore)(\([^)]*\))?:\s*/- /'
+          }
+
+          {
+            echo "# Steamless ${VERSION}"
+            echo ""
+            echo "## What's Changed"
+            echo ""
+
+            [ -n "$FEATS" ]     && { echo "### Features";      echo ""; echo "$(strip_prefix "$FEATS")"; }
+            [ -n "$FIXES" ]     && { echo "### Bug Fixes";     echo ""; echo "$(strip_prefix "$FIXES")"; }
+            [ -n "$REFACTORS" ] && { echo "### Refactoring";   echo ""; echo "$(strip_prefix "$REFACTORS")"; }
+            [ -n "$CIS" ]       && { echo "### CI/CD";         echo ""; echo "$(strip_prefix "$CIS")"; }
+            [ -n "$STYLES" ]    && { echo "### Style";         echo ""; echo "$(strip_prefix "$STYLES")"; }
+            [ -n "$DOCS" ]      && { echo "### Documentation"; echo ""; echo "$(strip_prefix "$DOCS")"; }
+            [ -n "$CHORES" ]    && { echo "### Chores";        echo ""; echo "$(strip_prefix "$CHORES")"; }
+            [ -n "$OTHERS" ]    && { echo "### Other";         echo ""; echo "$(strip_prefix "$OTHERS")"; }
+          } > changelog.txt
 
           echo "=== Generated Changelog ==="
           cat changelog.txt
