@@ -77,12 +77,14 @@ namespace Steamless.Model
                     try
                     {
                         var asm = Assembly.Load(File.ReadAllBytes(dll));
+
+                        // Dependency assemblies (e.g. iced.dll) are not plugins; skip them silently.
+                        if (!asm.GetReferencedAssemblies().Any(a => a.Name.Equals("Steamless.API", StringComparison.OrdinalIgnoreCase)))
+                            continue;
+
                         var baseClass = asm.GetTypes().FirstOrDefault(t => t.BaseType == typeof(SteamlessPlugin));
                         if (baseClass == null)
-                        {
-                            this.m_LoggingService.OnAddLogMessage(this, new LogMessageEventArgs($"Failed to load plugin; could not find SteamlessPlugin base class. ({Path.GetFileName(dll)})", LogMessageType.Warning));
                             continue;
-                        }
 
                         var baseAttr = baseClass.GetCustomAttributes(typeof(SteamlessApiVersionAttribute), false);
                         if (baseAttr.Length == 0)
