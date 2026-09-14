@@ -37,7 +37,6 @@ namespace Steamless.API.Model
         [ObservableProperty] private bool _keepBindSection;
         [ObservableProperty] private bool _dumpPayloadToDisk;
         [ObservableProperty] private bool _dumpSteamDrmpToDisk;
-        [ObservableProperty] private bool _useExperimentalFeatures;
         [ObservableProperty] private bool _dontRealignSections;
         [ObservableProperty] private bool _zeroDosStubData;
         [ObservableProperty] private bool _recalculateFileChecksum;
@@ -48,7 +47,6 @@ namespace Steamless.API.Model
             this.KeepBindSection = false;
             this.DumpPayloadToDisk = false;
             this.DumpSteamDrmpToDisk = false;
-            this.UseExperimentalFeatures = false;
             this.DontRealignSections = true;
             this.ZeroDosStubData = true;
             this.RecalculateFileChecksum = false;

@@ -71,7 +71,6 @@ namespace Steamless.CLI
             Console.WriteLine("    --dumpdrmp       - Dumps the SteamDRMP.dll to disk.");
             Console.WriteLine("    --realign        - Realigns the unpacked file sections.");
             Console.WriteLine("    --recalcchecksum - Recalculates the unpacked file checksum.");
-            Console.WriteLine("    --exp            - Use experimental features.");
         }
 
         static List<SteamlessPlugin> GetSteamlessPlugins(LoggingService logService)
@@ -208,8 +207,6 @@ namespace Steamless.CLI
                     opts.DontRealignSections = false;
                 else if (string.Equals(arg, "--recalcchecksum", StringComparison.OrdinalIgnoreCase))
                     opts.RecalculateFileChecksum = true;
-                else if (string.Equals(arg, "--exp", StringComparison.OrdinalIgnoreCase))
-                    opts.UseExperimentalFeatures = true;
                 else if (!arg.StartsWith("--"))
                 {
                     if (fileSpecified)
