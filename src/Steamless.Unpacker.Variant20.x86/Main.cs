@@ -179,15 +179,23 @@ namespace Steamless.Unpacker.Variant20.x86
              */
 
             var codeSectionRVA = this.File.NtHeaders.OptionalHeader.BaseOfCode;
+            var codeSection = this.File.GetOwnerSection(codeSectionRVA);
 
-            // TODO: This is not really ideal to do but for now this breaks support for other variants of this version..
-            if (this.Options.UseExperimentalFeatures)
+            // Some variants of this version report a wrong BaseOfCode. Only fall back to the
+            // stub header's code section address when the default does not map to a valid
+            // section, so variants with a working BaseOfCode are never affected.
+            if (codeSection.PointerToRawData == 0 || codeSection.SizeOfRawData == 0)
             {
                 if (this.StubHeader.CodeSectionVirtualAddress != 0)
-                    codeSectionRVA = this.File.GetRvaFromVa(this.StubHeader.CodeSectionVirtualAddress);
+                {
+                    var stubSectionRVA = this.File.GetRvaFromVa(this.StubHeader.CodeSectionVirtualAddress);
+                    var stubSection = this.File.GetOwnerSection(stubSectionRVA);
+                    if (stubSection.PointerToRawData != 0 && stubSection.SizeOfRawData != 0)
+                        codeSectionRVA = stubSectionRVA;
+                }
             }
 
-            var codeSection = this.File.GetOwnerSection(codeSectionRVA);
+            codeSection = this.File.GetOwnerSection(codeSectionRVA);
             if (codeSection.PointerToRawData == 0 || codeSection.SizeOfRawData == 0)
                 return false;
 
