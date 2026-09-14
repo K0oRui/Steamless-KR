@@ -32,6 +32,8 @@ namespace Steamless
     using Steamless.API;
     using Steamless.API.Services;
     using System;
+    using System.IO;
+    using System.Reflection;
     using ViewModel;
 
     public partial class App
@@ -40,6 +42,29 @@ namespace Steamless
 
         public App()
         {
+            // AssemblyResolve override so plugin dependencies can be loaded from the Plugins folder.
+            AppDomain.CurrentDomain.AssemblyResolve += (sender, e) =>
+            {
+                try
+                {
+                    var name = e.Name.Contains(",") ? e.Name.Substring(0, e.Name.IndexOf(",", StringComparison.InvariantCultureIgnoreCase)) : e.Name.Replace(".dll", "");
+
+                    // Satellite resource assemblies are not plugin dependencies.
+                    if (name.EndsWith(".resources", StringComparison.OrdinalIgnoreCase))
+                        return null;
+
+                    var f = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Plugins", name + ".dll");
+                    if (!File.Exists(f))
+                        return null;
+
+                    return Assembly.Load(File.ReadAllBytes(f));
+                }
+                catch (Exception)
+                {
+                    return null;
+                }
+            };
+
             Services = new ServiceCollection()
                 .AddSingleton<IDataService, DataService>()
                 .AddSingleton<LoggingService>()
