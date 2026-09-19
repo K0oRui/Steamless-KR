@@ -1,11 +1,11 @@
 <div align="center">
-    <img width="200" src="assets/steamless.png" alt="steamless">
+    <img width="350" src="assets/steamless.svg" alt="steamless">
     </br>
 </div>
 
 <div align="center">
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-CCA--NCND%20v4-blue?style=for-the-badge" alt="license" /></a>
-    <a href="https://github.com/K0oRui/Steamless/actions/workflows/build.yml"><img src="https://img.shields.io/github/actions/workflow/status/K0oRui/Steamless/build.yml?style=for-the-badge&label=build" alt="build" /></a>
+    <a href="https://github.com/K0oRui/Steamless-KR/actions/workflows/release.yml"><img src="https://img.shields.io/github/actions/workflow/status/K0oRui/Steamless-KR/release.yml?style=for-the-badge&label=build" alt="build" /></a>
 </div>
 
 # Steamless
@@ -84,26 +84,18 @@ From the Steamworks documentation:
 
 Steamless currently supports the following SteamStub DRM variants:
 
-  * **SteamStub Variant 1**
+  * **SteamStub Variant 1.0**
     * 32bit version is supported.
-  * **SteamStub Variant 2**
-    * **v2.0.0**
-      * 32bit version is supported.
-    * **v2.0.1**
-      * 32bit version is supported.
-  * **SteamStub Variant 3**
-    * **v3.0.0**
-      * 32bit version is supported.
-      * 64bit version is supported.
-    * **v3.0.1**
-      * 32bit version is supported.
-      * 64bit version is supported.
-    * **v3.1.0**
-      * 32bit version is supported.
-      * 64bit version is supported.
-    * **v3.1.2**
-      * 32bit version is supported.
-      * 64bit version is supported.
+  * **SteamStub Variant 2.0**
+    * 32bit version is supported.
+  * **SteamStub Variant 2.1**
+    * 32bit version is supported.
+  * **SteamStub Variant 3.0**
+    * 32bit version is supported.
+    * 64bit version is supported.
+  * **SteamStub Variant 3.1**
+    * 32bit version is supported.
+    * 64bit version is supported.
 
 _**Note:** Version numbers are not 'real'. They are superficial and are simply assumed versions based on major changes to the DRM and what has been observed in the various submitted file samples._
 
@@ -155,7 +147,8 @@ dotnet run --project .\src\Steamless -c Release
 ```
 
 **Notes:**
-- Source code is under `src/`. All plugin DLLs are loaded dynamically from `Plugins/` at runtime. After building, copy the plugin DLLs and `Iced.dll` (for Variant 2.x) into the output `Plugins/` folder, or use the provided CI scripts.
+- The released binaries are framework-dependent. They need the .NET 9.0 runtime installed on Windows and Linux.
+- Source code is under `src/`. All plugin DLLs are loaded dynamically from `Plugins/` at runtime. After building, copy the plugin DLLs and `Iced.dll` (for Variant 2.x) into the output `Plugins/` folder. The release workflow stages them automatically.
 - All plugin assemblies are AnyCPU (MSIL), so they load in both 32-bit and 64-bit host processes.
 - The solution can be built from Visual Studio or the `dotnet` CLI.
 
