@@ -1,0 +1,377 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_only:
+        description: "Build only (no release)"
+        required: false
+        default: false
+        type: boolean
+      version:
+        description: "Version number (e.g. 1.0.0)"
+        required: true
+        type: string
+      prerelease:
+        description: "Release type"
+        required: true
+        default: "full"
+        type: choice
+        options:
+          - full
+          - prerelease
+      build_windows:
+        description: "Build Windows (GUI + CLI + plugins)"
+        required: false
+        default: true
+        type: boolean
+      build_linux:
+        description: "Build Linux (CLI + plugins)"
+        required: false
+        default: true
+        type: boolean
+      changelog_from:
+        description: "Changelog base ref (tag or commit). Defaults to the previous tag"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Prepare: validate version, generate release notes, upload them
+  # ─────────────────────────────────────────────────────────────────────────────
+  prepare:
+    name: Prepare Release Notes
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Validate version format
+        run: |
+          VERSION="${{ inputs.version }}"
+          if [[ ! "$VERSION" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
+            echo "Error: Version must be in format X.Y.Z or vX.Y.Z (e.g., 1.0.0 or v1.0.0)"
+            exit 1
+          fi
+
+      - name: Normalize version
+        id: version
+        run: |
+          VERSION="${{ inputs.version }}"
+          if [[ ! "$VERSION" =~ ^v ]]; then
+            VERSION="v$VERSION"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Generate changelog
+        shell: bash
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          REPO_URL="https://github.com/${{ github.repository }}/commit"
+
+          git fetch --tags --force
+
+          if [ -n "${{ inputs.changelog_from }}" ]; then
+            PREV_TAG="${{ inputs.changelog_from }}"
+          else
+            PREV_TAG=$(git describe --tags --abbrev=0 --exclude="$VERSION" 2>/dev/null || \
+                       git rev-list --tags --skip=1 --max-count=1 | xargs -r git describe --tags --abbrev=0 2>/dev/null || \
+                       echo "")
+          fi
+
+          echo "Current Version: $VERSION"
+          echo "Previous Tag: ${PREV_TAG:-<none>}"
+
+          if [ -n "$PREV_TAG" ]; then
+            COMMITS=$(git log "$PREV_TAG"..HEAD --pretty=format:"%s|||%h" --no-merges)
+          else
+            COMMITS=$(git log -30 --pretty=format:"%s|||%h" --no-merges)
+          fi
+
+          FEATS="" FIXES="" REFACTORS="" CIS="" STYLES="" DOCS="" CHORES="" OTHERS=""
+
+          while IFS= read -r line; do
+            [ -z "$line" ] && continue
+            MSG="${line%%|||*}"
+            HASH="${line##*|||}"
+            ENTRY="- ${MSG} ([${HASH}](${REPO_URL}/${HASH}))"
+
+            case "$MSG" in
+              feat:*)     FEATS="${FEATS}${ENTRY}"$'\n' ;;
+              fix:*)      FIXES="${FIXES}${ENTRY}"$'\n' ;;
+              refactor:*) REFACTORS="${REFACTORS}${ENTRY}"$'\n' ;;
+              ci:*)       CIS="${CIS}${ENTRY}"$'\n' ;;
+              style:*)    STYLES="${STYLES}${ENTRY}"$'\n' ;;
+              docs:*)     DOCS="${DOCS}${ENTRY}"$'\n' ;;
+              chore:*)    CHORES="${CHORES}${ENTRY}"$'\n' ;;
+              *)          OTHERS="${OTHERS}${ENTRY}"$'\n' ;;
+            esac
+          done <<< "$COMMITS"
+
+          strip_prefix() {
+            echo "$1" | sed -E 's/^- (feat|fix|refactor|ci|style|docs|chore)(\([^)]*\))?:\s*/- /'
+          }
+
+          {
+            echo "# Steamless ${VERSION}"
+            echo ""
+            echo "## What's Changed"
+            echo ""
+
+            [ -n "$FEATS" ]     && { echo "### Features";      echo ""; echo "$(strip_prefix "$FEATS")"; }
+            [ -n "$FIXES" ]     && { echo "### Bug Fixes";     echo ""; echo "$(strip_prefix "$FIXES")"; }
+            [ -n "$REFACTORS" ] && { echo "### Refactoring";   echo ""; echo "$(strip_prefix "$REFACTORS")"; }
+            [ -n "$CIS" ]       && { echo "### CI/CD";         echo ""; echo "$(strip_prefix "$CIS")"; }
+            [ -n "$STYLES" ]    && { echo "### Style";         echo ""; echo "$(strip_prefix "$STYLES")"; }
+            [ -n "$DOCS" ]      && { echo "### Documentation"; echo ""; echo "$(strip_prefix "$DOCS")"; }
+            [ -n "$CHORES" ]    && { echo "### Chores";        echo ""; echo "$(strip_prefix "$CHORES")"; }
+            [ -n "$OTHERS" ]    && { echo "### Other";         echo ""; echo "$(strip_prefix "$OTHERS")"; }
+          } > release-notes.md
+
+          echo "=== Generated Changelog ==="
+          cat release-notes.md
+
+      - name: Upload release notes
+        uses: actions/upload-artifact@v6
+        with:
+          name: release-notes
+          path: release-notes.md
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Windows — GUI + CLI + all plugins
+  # ─────────────────────────────────────────────────────────────────────────────
+  build-windows:
+    name: Build (Windows)
+    needs: prepare
+    if: inputs.build_windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "9.0.x"
+
+      - uses: actions/cache@v5
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Restore
+        run: dotnet restore Steamless.sln
+
+      - name: Build CLI + all plugin projects
+        shell: bash
+        run: |
+          dotnet build src/Steamless.CLI -c Release --no-restore
+          dotnet build src/ExamplePlugin -c Release --no-restore
+          for proj in Variant10.x86 Variant20.x86 Variant21.x86 Variant30.x86 Variant30.x64 Variant31.x86 Variant31.x64; do
+            echo "Building Steamless.Unpacker.$proj..."
+            dotnet build "src/Steamless.Unpacker.$proj" -c Release --no-restore
+          done
+
+      - name: Build GUI
+        shell: bash
+        run: dotnet build src/Steamless/Steamless.csproj -c Release --no-restore
+
+      - name: Stage artifacts
+        shell: bash
+        run: |
+          CLI_DIR="src/Steamless.CLI/bin/Release/net9.0"
+          GUI_DIR="src/Steamless/bin/Release/net9.0-windows"
+          mkdir -p dist/Plugins
+
+          echo "=== CLI output ==="
+          ls -la "$CLI_DIR/" | head -20
+          cp "$CLI_DIR/"* dist/
+
+          if [ -f "dist/Steamless.API.dll" ]; then
+            cp dist/Steamless.API.dll dist/Plugins/
+          fi
+
+          echo "=== GUI output ==="
+          ls -la "$GUI_DIR/" | head -20
+          cp "$GUI_DIR/"* dist/
+          if [ -f "dist/Steamless.API.dll" ] && [ ! -f "dist/Plugins/Steamless.API.dll" ]; then
+            mv dist/Steamless.API.dll dist/Plugins/
+          fi
+
+          echo "=== Plugin DLLs ==="
+          for proj in Variant10.x86 Variant20.x86 Variant21.x86 Variant30.x86 Variant30.x64 Variant31.x86 Variant31.x64; do
+            dll="src/Steamless.Unpacker.$proj/bin/Release/net9.0/Steamless.Unpacker.$proj.dll"
+            if [ -f "$dll" ]; then
+              cp "$dll" dist/Plugins/
+              echo "  Copied: $proj"
+            else
+              echo "  MISSING: $dll"
+            fi
+          done
+
+          echo "=== Iced ==="
+          ICED=$(find . -path '*/Release/net9.0/Iced.dll' -print -quit)
+          if [ -n "$ICED" ]; then
+            cp "$ICED" dist/Plugins/
+          else
+            echo "  Iced.dll not found"
+          fi
+
+          echo "=== ExamplePlugin ==="
+          EXAMPLE="src/ExamplePlugin/bin/Release/net9.0/ExamplePlugin.dll"
+          if [ -f "$EXAMPLE" ]; then
+            cp "$EXAMPLE" dist/Plugins/
+          else
+            echo "  ExamplePlugin.dll not found"
+          fi
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: steamless-Windows
+          path: dist/
+          if-no-files-found: error
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Linux — CLI + all plugins
+  # ─────────────────────────────────────────────────────────────────────────────
+  build-linux:
+    name: Build (Linux)
+    needs: prepare
+    if: inputs.build_linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "9.0.x"
+
+      - uses: actions/cache@v5
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Restore
+        run: |
+          dotnet restore src/Steamless.CLI \
+            src/ExamplePlugin \
+            src/Steamless.Unpacker.Variant10.x86 \
+            src/Steamless.Unpacker.Variant20.x86 \
+            src/Steamless.Unpacker.Variant21.x86 \
+            src/Steamless.Unpacker.Variant30.x86 \
+            src/Steamless.Unpacker.Variant30.x64 \
+            src/Steamless.Unpacker.Variant31.x86 \
+            src/Steamless.Unpacker.Variant31.x64
+
+      - name: Build CLI + all plugin projects
+        run: |
+          dotnet build src/Steamless.CLI -c Release --no-restore
+          dotnet build src/ExamplePlugin -c Release --no-restore
+          for proj in Variant10.x86 Variant20.x86 Variant21.x86 Variant30.x86 Variant30.x64 Variant31.x86 Variant31.x64; do
+            echo "Building Steamless.Unpacker.$proj..."
+            dotnet build "src/Steamless.Unpacker.$proj" -c Release --no-restore
+          done
+
+      - name: Stage artifacts
+        run: |
+          CLI_DIR="src/Steamless.CLI/bin/Release/net9.0"
+          mkdir -p dist/Plugins
+
+          echo "=== CLI output ==="
+          ls -la "$CLI_DIR/" | head -20
+          cp "$CLI_DIR/"* dist/
+
+          if [ -f "dist/Steamless.API.dll" ]; then
+            cp dist/Steamless.API.dll dist/Plugins/
+          fi
+
+          echo "=== Plugin DLLs ==="
+          for proj in Variant10.x86 Variant20.x86 Variant21.x86 Variant30.x86 Variant30.x64 Variant31.x86 Variant31.x64; do
+            dll="src/Steamless.Unpacker.$proj/bin/Release/net9.0/Steamless.Unpacker.$proj.dll"
+            if [ -f "$dll" ]; then
+              cp "$dll" dist/Plugins/
+              echo "  Copied: $proj"
+            else
+              echo "  MISSING: $dll"
+            fi
+          done
+
+          echo "=== Iced ==="
+          ICED=$(find . -path '*/Release/net9.0/Iced.dll' -print -quit)
+          if [ -n "$ICED" ]; then
+            cp "$ICED" dist/Plugins/
+          else
+            echo "  Iced.dll not found"
+          fi
+
+          echo "=== ExamplePlugin ==="
+          EXAMPLE="src/ExamplePlugin/bin/Release/net9.0/ExamplePlugin.dll"
+          if [ -f "$EXAMPLE" ]; then
+            cp "$EXAMPLE" dist/Plugins/
+          else
+            echo "  ExamplePlugin.dll not found"
+          fi
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: steamless-Linux
+          path: dist/
+          if-no-files-found: error
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Draft GitHub Release — collects all platform builds
+  # ─────────────────────────────────────────────────────────────────────────────
+  release:
+    name: Release
+    needs: [prepare, build-windows, build-linux]
+    if: ${{ !inputs.build_only && always() && !failure() && !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete stale draft release
+        run: |
+          gh api "repos/${{ github.repository }}/releases" \
+            --jq '.[] | select(.tag_name == "${{ needs.prepare.outputs.version }}" and .draft) | .id' \
+            | xargs -r -I{} gh api -X DELETE "repos/${{ github.repository }}/releases/{}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download release notes
+        uses: actions/download-artifact@v7
+        with:
+          name: release-notes
+          path: release-notes
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v7
+        with:
+          path: artifacts
+
+      - name: Package archives
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          if [ -d "artifacts/steamless-Windows" ]; then
+            cd artifacts/steamless-Windows && zip -r "../Steamless-${VERSION}-windows.zip" . && cd ../..
+          fi
+          if [ -d "artifacts/steamless-Linux" ]; then
+            cd artifacts/steamless-Linux && tar czf "../Steamless-${VERSION}-linux.tar.gz" . && cd ../..
+          fi
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ needs.prepare.outputs.version }}
+          name: Steamless ${{ needs.prepare.outputs.version }}
+          prerelease: ${{ inputs.prerelease == 'prerelease' }}
+          body_path: release-notes/release-notes.md
+          files: |
+            Steamless-${{ needs.prepare.outputs.version }}-windows.zip
+            Steamless-${{ needs.prepare.outputs.version }}-linux.tar.gz

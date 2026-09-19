@@ -1,44 +1,47 @@
-name: quality
+name: Lint
 
 on:
   push:
     branches: [master]
   pull_request:
-    branches: [master]
-  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
   format:
+    name: dotnet format check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout code
+        uses: actions/checkout@v5
 
-      - uses: actions/setup-dotnet@v5
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: '9.0.x'
+          dotnet-version: "9.0.x"
 
       - name: Check formatting
         run: dotnet format --verify-no-changes
 
   analyze:
+    name: CodeQL analysis
     runs-on: ubuntu-latest
     permissions:
       actions: read
       contents: read
       security-events: write
-
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout code
+        uses: actions/checkout@v5
 
-      - uses: actions/setup-dotnet@v5
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: '9.0.x'
+          dotnet-version: "9.0.x"
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4
+        uses: github/codeql-action/init@v3
         with:
           languages: csharp
           build-mode: manual
@@ -47,4 +50,4 @@ jobs:
         run: dotnet build Steamless.sln -c Release
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v4
+        uses: github/codeql-action/analyze@v3

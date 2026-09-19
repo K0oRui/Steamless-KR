@@ -2,7 +2,7 @@ name: cleanup
 
 on:
   workflow_run:
-    workflows: ["quality", "release"]
+    workflows: ["Lint", "Release"]
     types: [completed]
   workflow_dispatch:
 
