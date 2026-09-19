@@ -380,22 +380,25 @@ namespace Steamless.Unpacker.Variant31.x86
                 Array.Copy(this.File.FileData, this.File.GetFileOffsetFromRva(codeSection.VirtualAddress), codeSectionData, this.StubHeader.CodeSectionStolenData.Length, (long)this.StubHeader.CodeSectionRawSize);
 
                 var aes = new AesHelper(this.StubHeader.AES_Key, this.StubHeader.AES_IV);
-                aes.RebuildIv(this.StubHeader.AES_IV);
-
-                var data = aes.Decrypt(codeSectionData, CipherMode.CBC, PaddingMode.None);
-                if (data == null)
-                    return false;
-
-                if (this.CodeSectionIndex < 0)
+                using (aes)
                 {
-                    this.Log(" --> Error: could not resolve code section index!", LogMessageType.Error);
-                    return false;
-                }
+                    aes.RebuildIv(this.StubHeader.AES_IV);
 
-                var sectionData = this.File.SectionData[this.CodeSectionIndex];
-                var copySize = Math.Min((long)this.StubHeader.CodeSectionRawSize, sectionData.Length);
-                Array.Copy(data, sectionData, copySize);
-                this.CodeSectionData = sectionData;
+                    var data = aes.Decrypt(codeSectionData, CipherMode.CBC, PaddingMode.None);
+                    if (data == null)
+                        return false;
+
+                    if (this.CodeSectionIndex < 0)
+                    {
+                        this.Log(" --> Error: could not resolve code section index!", LogMessageType.Error);
+                        return false;
+                    }
+
+                    var sectionData = this.File.SectionData[this.CodeSectionIndex];
+                    var copySize = Math.Min((long)this.StubHeader.CodeSectionRawSize, sectionData.Length);
+                    Array.Copy(data, sectionData, copySize);
+                    this.CodeSectionData = sectionData;
+                }
 
                 return true;
             }
@@ -404,44 +407,6 @@ namespace Steamless.Unpacker.Variant31.x86
                 this.Log(" --> Error trying to decrypt the files code section data!", LogMessageType.Error);
                 return false;
             }
-        }
-
-        private uint FindImportDescriptorInRdata(byte[] rdataData, uint rdataRva)
-        {
-            return FindImportByDllNamePattern(rdataData, rdataRva);
-        }
-
-        private uint FindImportByDllNamePattern(byte[] rdataData, uint rdataRva)
-        {
-            for (int offset = 0; offset < rdataData.Length - 20; offset += 4)
-            {
-                var nameRva = BitConverter.ToUInt32(rdataData, offset + 12);
-                if (nameRva < rdataRva || nameRva >= rdataRva + rdataData.Length)
-                    continue;
-
-                var nameFileOff = nameRva - rdataRva;
-                if (nameFileOff >= (uint)rdataData.Length)
-                    continue;
-
-                var dllName = System.Text.Encoding.ASCII.GetString(rdataData, (int)nameFileOff, Math.Min(64, rdataData.Length - (int)nameFileOff));
-                var nullIdx = dllName.IndexOf('\0');
-                if (nullIdx >= 0)
-                    dllName = dllName.Substring(0, nullIdx);
-
-                if (!dllName.EndsWith(".dll", System.StringComparison.OrdinalIgnoreCase))
-                    continue;
-
-                var origRva = BitConverter.ToUInt32(rdataData, offset);
-                var iatRva = BitConverter.ToUInt32(rdataData, offset + 16);
-                if (origRva < rdataRva || origRva >= rdataRva + rdataData.Length)
-                    continue;
-                if (iatRva < rdataRva || iatRva >= rdataRva + rdataData.Length)
-                    continue;
-
-                return rdataRva + (uint)offset;
-            }
-
-            return 0;
         }
 
         private bool Step6()
@@ -480,7 +445,7 @@ namespace Steamless.Unpacker.Variant31.x86
                         if (rdataSection.IsValid)
                         {
                             var rdataData = this.File.GetSectionData(".rdata");
-                            var importRva = this.FindImportDescriptorInRdata(rdataData, rdataSection.VirtualAddress);
+                            var importRva = Pe32Helpers.FindImportDescriptorInRdata(rdataData, rdataSection.VirtualAddress);
                             if (importRva > 0)
                             {
                                 importTable.VirtualAddress = importRva;

@@ -177,5 +177,38 @@ namespace Steamless.API.PE64
                 return -1;
             }
         }
+
+        public static uint FindImportDescriptorInRdata(byte[] rdataData, uint rdataRva)
+        {
+            for (int offset = 0; offset < rdataData.Length - 20; offset += 4)
+            {
+                var nameRva = BitConverter.ToUInt32(rdataData, offset + 12);
+                if (nameRva < rdataRva || nameRva >= rdataRva + rdataData.Length)
+                    continue;
+
+                var nameFileOff = nameRva - rdataRva;
+                if (nameFileOff >= (uint)rdataData.Length)
+                    continue;
+
+                var dllName = System.Text.Encoding.ASCII.GetString(rdataData, (int)nameFileOff, Math.Min(64, rdataData.Length - (int)nameFileOff));
+                var nullIdx = dllName.IndexOf('\0');
+                if (nullIdx >= 0)
+                    dllName = dllName.Substring(0, nullIdx);
+
+                if (!dllName.EndsWith(".dll", System.StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                var origRva = BitConverter.ToUInt32(rdataData, offset);
+                var iatRva = BitConverter.ToUInt32(rdataData, offset + 16);
+                if (origRva < rdataRva || origRva >= rdataRva + rdataData.Length)
+                    continue;
+                if (iatRva < rdataRva || iatRva >= rdataRva + rdataData.Length)
+                    continue;
+
+                return rdataRva + (uint)offset;
+            }
+
+            return 0;
+        }
     }
 }
