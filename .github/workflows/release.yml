@@ -389,10 +389,10 @@ jobs:
         run: |
           VERSION="${{ needs.bump-version.outputs.version }}"
           if [ -d "artifacts/steamless-Windows" ]; then
-            cd artifacts/steamless-Windows && zip -r "../Steamless-${VERSION}-windows.zip" . && cd ../..
+            cd artifacts/steamless-Windows && zip -r "../../Steamless-${VERSION}-windows.zip" . && cd ../..
           fi
           if [ -d "artifacts/steamless-Linux" ]; then
-            cd artifacts/steamless-Linux && tar czf "../Steamless-${VERSION}-linux.tar.gz" . && cd ../..
+            cd artifacts/steamless-Linux && tar czf "../../Steamless-${VERSION}-linux.tar.gz" . && cd ../..
           fi
 
       - name: Publish release
