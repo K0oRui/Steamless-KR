@@ -40,16 +40,14 @@ namespace Steamless
     {
         public static IServiceProvider Services { get; private set; }
 
-        public App()
+        static App()
         {
-            // AssemblyResolve override so plugin dependencies can be loaded from the Plugins folder.
             AppDomain.CurrentDomain.AssemblyResolve += (sender, e) =>
             {
                 try
                 {
                     var name = e.Name.Contains(",") ? e.Name.Substring(0, e.Name.IndexOf(",", StringComparison.InvariantCultureIgnoreCase)) : e.Name.Replace(".dll", "");
 
-                    // Satellite resource assemblies are not plugin dependencies.
                     if (name.EndsWith(".resources", StringComparison.OrdinalIgnoreCase))
                         return null;
 
@@ -64,7 +62,10 @@ namespace Steamless
                     return null;
                 }
             };
+        }
 
+        public App()
+        {
             Services = new ServiceCollection()
                 .AddSingleton<IDataService, DataService>()
                 .AddSingleton<LoggingService>()

@@ -55,6 +55,8 @@ namespace Steamless.ViewModel
 
         private CancellationTokenSource m_TaskCts;
 
+        private bool m_IsUnpacking;
+
         [ObservableProperty] private ApplicationState _state;
         [ObservableProperty] private Version _steamlessVersion;
         [ObservableProperty] private BaseTask _currentTask;
@@ -109,7 +111,15 @@ namespace Steamless.ViewModel
                 if (this.Tasks.TryTake(out var task))
                 {
                     Application.Current.Dispatcher.Invoke(() => this.CurrentTask = task);
-                    await this.CurrentTask.StartTask();
+
+                    try
+                    {
+                        await this.CurrentTask.StartTask();
+                    }
+                    catch (Exception ex)
+                    {
+                        this.AddLogMessage(this, new LogMessageEventArgs($"Task '{task.Text}' failed: {ex.Message}", LogMessageType.Error));
+                    }
 
                     // LoadPluginsTask mutates ObservableCollection, so apply its result on the UI thread.
                     if (task is LoadPluginsTask lpt && lpt.LoadedPlugins != null)
@@ -127,7 +137,14 @@ namespace Steamless.ViewModel
                         this.State = ApplicationState.Running;
                 }
 
-                await Task.Delay(200, ct);
+                try
+                {
+                    await Task.Delay(200, ct);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
             }
         }
 
@@ -211,7 +228,7 @@ namespace Steamless.ViewModel
         [RelayCommand]
         private void OpenHyperlink(object parameter)
         {
-            if (parameter is Hyperlink link)
+            if (parameter is Hyperlink link && link.NavigateUri != null)
                 Process.Start(new ProcessStartInfo(link.NavigateUri.AbsoluteUri) { UseShellExecute = true });
         }
 
@@ -267,35 +284,47 @@ namespace Steamless.ViewModel
         [RelayCommand]
         private async Task UnpackFileAsync()
         {
-            await Task.Run(() =>
+            // Plugins are singletons and ProcessFile mutates instance state; never run two unpacks at once.
+            if (this.m_IsUnpacking)
+                return;
+            this.m_IsUnpacking = true;
+
+            try
             {
-                if (this.SelectedPluginIndex == -1)
-                    return;
-                if (this.SelectedPluginIndex >= this.Plugins.Count)
-                    return;
-                if (string.IsNullOrEmpty(this.InputFilePath))
-                    return;
-
-                try
+                await Task.Run(() =>
                 {
-                    var plugin = this.Plugins[this.SelectedPluginIndex];
-                    if (plugin == null)
-                        throw new Exception("Invalid plugin selected.");
+                    if (this.SelectedPluginIndex == -1)
+                        return;
+                    if (this.Plugins == null || this.SelectedPluginIndex >= this.Plugins.Count)
+                        return;
+                    if (string.IsNullOrEmpty(this.InputFilePath))
+                        return;
 
-                    // Dispatch to the selected plugin; it re-dispatches to its siblings.
-                    var siblings = this.Plugins.Where(p => p != plugin);
-                    if (plugin.CanProcessFile(this.InputFilePath))
-                        this.AddLogMessage(this, !plugin.ProcessFile(this.InputFilePath, this.Options, siblings) ? new LogMessageEventArgs("Failed to unpack file.", LogMessageType.Error) : new LogMessageEventArgs("Successfully unpacked file!", LogMessageType.Success));
-                    else
-                        this.AddLogMessage(this, new LogMessageEventArgs("Failed to unpack file.", LogMessageType.Error));
-                }
-                catch (Exception ex)
-                {
-                    this.AddLogMessage(this, new LogMessageEventArgs("Caught unhandled exception trying to unpack file.", LogMessageType.Error));
-                    this.AddLogMessage(this, new LogMessageEventArgs("Exception:", LogMessageType.Error));
-                    this.AddLogMessage(this, new LogMessageEventArgs(ex.Message, LogMessageType.Error));
-                }
-            });
+                    try
+                    {
+                        var plugin = this.Plugins[this.SelectedPluginIndex];
+                        if (plugin == null)
+                            throw new Exception("Invalid plugin selected.");
+
+                        // Dispatch to the selected plugin; it re-dispatches to its siblings.
+                        var siblings = this.Plugins.Where(p => p != plugin);
+                        if (plugin.CanProcessFile(this.InputFilePath))
+                            this.AddLogMessage(this, !plugin.ProcessFile(this.InputFilePath, this.Options, siblings) ? new LogMessageEventArgs("Failed to unpack file.", LogMessageType.Error) : new LogMessageEventArgs("Successfully unpacked file!", LogMessageType.Success));
+                        else
+                            this.AddLogMessage(this, new LogMessageEventArgs("Failed to unpack file.", LogMessageType.Error));
+                    }
+                    catch (Exception ex)
+                    {
+                        this.AddLogMessage(this, new LogMessageEventArgs("Caught unhandled exception trying to unpack file.", LogMessageType.Error));
+                        this.AddLogMessage(this, new LogMessageEventArgs("Exception:", LogMessageType.Error));
+                        this.AddLogMessage(this, new LogMessageEventArgs(ex.Message, LogMessageType.Error));
+                    }
+                });
+            }
+            finally
+            {
+                this.m_IsUnpacking = false;
+            }
         }
 
         [RelayCommand]
