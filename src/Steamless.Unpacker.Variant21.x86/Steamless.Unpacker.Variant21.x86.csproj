@@ -4,8 +4,6 @@
     <OutputType>Library</OutputType>
     <RootNamespace>Steamless.Unpacker.Variant21.x86</RootNamespace>
     <AssemblyName>Steamless.Unpacker.Variant21.x86</AssemblyName>
-    <AssemblyVersion>1.0.0.9</AssemblyVersion>
-    <FileVersion>1.0.0.9</FileVersion>
     <Description>Steamless SteamStub Variant v2.1 (x86) Unpacker</Description>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>

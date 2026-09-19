@@ -4,8 +4,6 @@
     <OutputType>Library</OutputType>
     <RootNamespace>ExamplePlugin</RootNamespace>
     <AssemblyName>ExamplePlugin</AssemblyName>
-    <AssemblyVersion>1.0.0.0</AssemblyVersion>
-    <FileVersion>1.0.0.0</FileVersion>
     <Description>Example Plugin</Description>
   </PropertyGroup>
 

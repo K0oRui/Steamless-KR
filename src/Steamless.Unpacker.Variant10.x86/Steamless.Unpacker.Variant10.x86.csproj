@@ -4,8 +4,6 @@
     <OutputType>Library</OutputType>
     <RootNamespace>Steamless.Unpacker.Variant10.x86</RootNamespace>
     <AssemblyName>Steamless.Unpacker.Variant10.x86</AssemblyName>
-    <AssemblyVersion>1.0.0.0</AssemblyVersion>
-    <FileVersion>1.0.0.0</FileVersion>
     <Description>Steamless SteamStub Variant v1.0 (x86) Unpacker</Description>
   </PropertyGroup>
 
