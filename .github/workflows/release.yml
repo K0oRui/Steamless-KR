@@ -222,7 +222,7 @@ jobs:
             echo "  Iced.dll not found"
           fi
 
-          - name: Upload artifacts
+      - name: Upload artifacts
         uses: actions/upload-artifact@v6
         with:
           name: steamless-Windows
@@ -301,7 +301,7 @@ jobs:
             echo "  Iced.dll not found"
           fi
 
-          - name: Upload artifacts
+      - name: Upload artifacts
         uses: actions/upload-artifact@v6
         with:
           name: steamless-Linux
