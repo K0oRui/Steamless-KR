@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       build_only:
-        description: "Build only (no release)"
+        description: "Build only (no version bump, no release)"
         required: false
         default: false
         type: boolean
@@ -40,14 +40,15 @@ permissions:
 
 jobs:
   # ─────────────────────────────────────────────────────────────────────────────
-  # Prepare: validate version, generate release notes, upload them
+  # Bump version: validate, stamp csproj versions, commit, push
   # ─────────────────────────────────────────────────────────────────────────────
-  prepare:
-    name: Prepare Release Notes
+  bump-version:
+    name: Bump Version & Commit
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
       assembly_version: ${{ steps.assembly-version.outputs.assembly_version }}
+      commit-sha: ${{ steps.sha.outputs.sha }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -153,16 +154,51 @@ jobs:
           name: release-notes
           path: release-notes.md
 
+      - name: Check if version already bumped
+        id: check-bump
+        run: |
+          LAST_BUMP=$(git log --format=%s --grep="^chore: bump version to" -1 || true)
+          if [ "$LAST_BUMP" = "chore: bump version to ${{ inputs.version }}" ]; then
+            echo "already-bumped=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "already-bumped=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Stamp version into project files
+        run: |
+          VERSION="${{ steps.assembly-version.outputs.assembly_version }}"
+          sed -i "s|<AssemblyVersion>[0-9.]*</AssemblyVersion>|<AssemblyVersion>${VERSION}</AssemblyVersion>|" src/Steamless/Steamless.csproj src/Steamless.CLI/Steamless.CLI.csproj
+          sed -i "s|<FileVersion>[0-9.]*</FileVersion>|<FileVersion>${VERSION}</FileVersion>|" src/Steamless/Steamless.csproj src/Steamless.CLI/Steamless.CLI.csproj
+
+      - name: Commit and push
+        if: ${{ !inputs.build_only && steps.check-bump.outputs.already-bumped == 'false' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/Steamless/Steamless.csproj src/Steamless.CLI/Steamless.CLI.csproj
+          if git diff --cached --quiet; then
+            echo "No version changes to commit"
+          else
+            git commit -m "chore: bump version to ${{ inputs.version }}"
+            git push
+          fi
+
+      - name: Resolve commit sha
+        id: sha
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
   # ─────────────────────────────────────────────────────────────────────────────
   # Windows — GUI + CLI + all plugins
   # ─────────────────────────────────────────────────────────────────────────────
   build-windows:
     name: Build (Windows)
-    needs: prepare
+    needs: bump-version
     if: inputs.build_windows
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.bump-version.outputs.commit-sha }}
 
       - uses: actions/setup-dotnet@v5
         with:
@@ -180,7 +216,7 @@ jobs:
       - name: Build CLI + all plugin projects
         shell: bash
         run: |
-          dotnet build src/Steamless.CLI -c Release --no-restore -p:AssemblyVersion=${{ needs.prepare.outputs.assembly_version }} -p:FileVersion=${{ needs.prepare.outputs.assembly_version }}
+          dotnet build src/Steamless.CLI -c Release --no-restore
           for proj in Variant10.x86 Variant20.x86 Variant21.x86 Variant30.x86 Variant30.x64 Variant31.x86 Variant31.x64; do
             echo "Building Steamless.Unpacker.$proj..."
             dotnet build "src/Steamless.Unpacker.$proj" -c Release --no-restore
@@ -188,7 +224,7 @@ jobs:
 
       - name: Build GUI
         shell: bash
-        run: dotnet build src/Steamless/Steamless.csproj -c Release --no-restore -p:AssemblyVersion=${{ needs.prepare.outputs.assembly_version }} -p:FileVersion=${{ needs.prepare.outputs.assembly_version }}
+        run: dotnet build src/Steamless/Steamless.csproj -c Release --no-restore
 
       - name: Stage artifacts
         shell: bash
@@ -243,11 +279,13 @@ jobs:
   # ─────────────────────────────────────────────────────────────────────────────
   build-linux:
     name: Build (Linux)
-    needs: prepare
+    needs: bump-version
     if: inputs.build_linux
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.bump-version.outputs.commit-sha }}
 
       - uses: actions/setup-dotnet@v5
         with:
@@ -261,18 +299,20 @@ jobs:
 
       - name: Restore
         run: |
-          dotnet restore src/Steamless.CLI \
+          for proj in src/Steamless.CLI \
             src/Steamless.Unpacker.Variant10.x86 \
             src/Steamless.Unpacker.Variant20.x86 \
             src/Steamless.Unpacker.Variant21.x86 \
             src/Steamless.Unpacker.Variant30.x86 \
             src/Steamless.Unpacker.Variant30.x64 \
             src/Steamless.Unpacker.Variant31.x86 \
-            src/Steamless.Unpacker.Variant31.x64
+            src/Steamless.Unpacker.Variant31.x64; do
+            dotnet restore "$proj"
+          done
 
       - name: Build CLI + all plugin projects
         run: |
-          dotnet build src/Steamless.CLI -c Release --no-restore -p:AssemblyVersion=${{ needs.prepare.outputs.assembly_version }} -p:FileVersion=${{ needs.prepare.outputs.assembly_version }}
+          dotnet build src/Steamless.CLI -c Release --no-restore
           for proj in Variant10.x86 Variant20.x86 Variant21.x86 Variant30.x86 Variant30.x64 Variant31.x86 Variant31.x64; do
             echo "Building Steamless.Unpacker.$proj..."
             dotnet build "src/Steamless.Unpacker.$proj" -c Release --no-restore
@@ -322,14 +362,14 @@ jobs:
   # ─────────────────────────────────────────────────────────────────────────────
   release:
     name: Release
-    needs: [prepare, build-windows, build-linux]
+    needs: [bump-version, build-windows, build-linux]
     if: ${{ !inputs.build_only && always() && !failure() && !cancelled() }}
     runs-on: ubuntu-latest
     steps:
       - name: Delete stale draft release
         run: |
           gh api "repos/${{ github.repository }}/releases" \
-            --jq '.[] | select(.tag_name == "${{ needs.prepare.outputs.version }}" and .draft) | .id' \
+            --jq '.[] | select(.tag_name == "${{ needs.bump-version.outputs.version }}" and .draft) | .id' \
             | xargs -r -I{} gh api -X DELETE "repos/${{ github.repository }}/releases/{}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -347,7 +387,7 @@ jobs:
 
       - name: Package archives
         run: |
-          VERSION="${{ needs.prepare.outputs.version }}"
+          VERSION="${{ needs.bump-version.outputs.version }}"
           if [ -d "artifacts/steamless-Windows" ]; then
             cd artifacts/steamless-Windows && zip -r "../Steamless-${VERSION}-windows.zip" . && cd ../..
           fi
@@ -358,10 +398,10 @@ jobs:
       - name: Publish release
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: ${{ needs.prepare.outputs.version }}
-          name: Steamless ${{ needs.prepare.outputs.version }}
+          tag_name: ${{ needs.bump-version.outputs.version }}
+          name: Steamless ${{ needs.bump-version.outputs.version }}
           prerelease: ${{ inputs.prerelease == 'prerelease' }}
           body_path: release-notes/release-notes.md
           files: |
-            Steamless-${{ needs.prepare.outputs.version }}-windows.zip
-            Steamless-${{ needs.prepare.outputs.version }}-linux.tar.gz
+            Steamless-${{ needs.bump-version.outputs.version }}-windows.zip
+            Steamless-${{ needs.bump-version.outputs.version }}-linux.tar.gz
