@@ -130,8 +130,6 @@ jobs:
           }
 
           {
-            echo "# Steamless ${VERSION}"
-            echo ""
             echo "## What's Changed"
             echo ""
 
@@ -400,6 +398,7 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.bump-version.outputs.version }}
+          target_commitish: ${{ needs.bump-version.outputs.commit-sha }}
           name: Steamless ${{ needs.bump-version.outputs.version }}
           prerelease: ${{ inputs.prerelease == 'prerelease' }}
           body_path: release-notes/release-notes.md
