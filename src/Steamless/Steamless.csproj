@@ -8,8 +8,8 @@
     <ApplicationIcon>Assets\steam.ico</ApplicationIcon>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <TargetFramework>net9.0-windows</TargetFramework>
-    <AssemblyVersion>4.0.1.0</AssemblyVersion>
-    <FileVersion>4.0.1.0</FileVersion>
+    <AssemblyVersion>4.3.0</AssemblyVersion>
+    <FileVersion>4.3.0</FileVersion>
     <Description>Removes the SteamStub DRM protection from Steam applications.</Description>
   </PropertyGroup>
 
