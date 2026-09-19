@@ -39,8 +39,7 @@ namespace Steamless.CLI
 
     internal class Program
     {
-        // Must match the API version defined in DataService.cs.
-        private static readonly Version SteamlessApiVersion = new Version(1, 0);
+        private static readonly Version SteamlessApiVersion = SteamlessApiVersionAttribute.ApiVersion;
 
         static void PrintHeader()
         {

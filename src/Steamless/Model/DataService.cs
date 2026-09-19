@@ -40,7 +40,7 @@ namespace Steamless.Model
     public class DataService : IDataService
     {
         private readonly LoggingService m_LoggingService;
-        private static readonly Version SteamlessApiVersion = new Version(1, 0);
+        private static readonly Version SteamlessApiVersion = SteamlessApiVersionAttribute.ApiVersion;
 
         public DataService(LoggingService loggingService)
         {

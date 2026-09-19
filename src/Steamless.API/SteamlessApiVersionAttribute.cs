@@ -32,6 +32,8 @@ namespace Steamless.API
     [AttributeUsage(AttributeTargets.Class, Inherited = false)]
     public class SteamlessApiVersionAttribute : Attribute
     {
+        public static readonly Version ApiVersion = new Version(1, 0);
+
         public SteamlessApiVersionAttribute(int major, int minor)
         {
             this.Version = new Version(major, minor);
