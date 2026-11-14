@@ -1,0 +1,150 @@
+﻿<!--
+ * Steamless - Copyright (c) 2015 - 2024 atom0s [atom0s@live.com]
+ *
+ * This work is licensed under the Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License.
+ * To view a copy of this license, visit http://creativecommons.org/licenses/by-nc-nd/4.0/ or send a letter to
+ * Creative Commons, PO Box 1866, Mountain View, CA 94042, USA.
+ *
+ * By using Steamless, you agree to the above license and its terms.
+ *
+ *      Attribution - You must give appropriate credit, provide a link to the license and indicate if changes were
+ *                    made. You must do so in any reasonable manner, but not in any way that suggests the licensor
+ *                    endorses you or your use.
+ *
+ *   Non-Commercial - You may not use the material (Steamless) for commercial purposes.
+ *
+ *   No-Derivatives - If you remix, transform, or build upon the material (Steamless), you may not distribute the
+ *                    modified material. You are, however, allowed to submit the modified works back to the original
+ *                    Steamless project in attempt to have it added to the original project.
+ *
+ * You may not apply legal terms or technological measures that legally restrict others
+ * from doing anything the license permits.
+ *
+ * No warranties are given.
+ -->
+<UserControl x:Class="Steamless.View.AboutView"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:shadui="clr-namespace:ShadUI;assembly=ShadUI"
+             xmlns:controls="using:Steamless.Controls"
+             xmlns:svg="using:Avalonia.Svg"
+             xmlns:vm="using:Steamless.ViewModel"
+             x:CompileBindings="True"
+             x:DataType="vm:MainWindowViewModel">
+
+    <UserControl.Styles>
+        <Style Selector="Button.link">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+            <Setter Property="Padding" Value="10,4" />
+            <Setter Property="Height" Value="28" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="CornerRadius" Value="7" />
+            <Setter Property="shadui:ButtonAssist.HoverBackground" Value="#1A8B7CFF" />
+        </Style>
+    </UserControl.Styles>
+
+    <Grid Margin="20,16,20,20">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" controls:ScrollFade.IsEnabled="True">
+            <Grid MinHeight="{Binding $parent[ScrollViewer].Bounds.Height}">
+                <StackPanel MaxWidth="480" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="0">
+                    <Image Source="{svg:SvgImage avares://Steamless/Assets/steam.svg}"
+                           Width="76" HorizontalAlignment="Center" Margin="0,0,0,12" />
+
+                    <TextBlock Text="Steamless-KR" FontSize="30" FontWeight="Bold" HorizontalAlignment="Center">
+                        <TextBlock.Foreground>
+                            <LinearGradientBrush StartPoint="50%,0%" EndPoint="50%,100%">
+                                <GradientStop Color="#E1E1E1" Offset="0" />
+                                <GradientStop Color="#D7D7D7" Offset="1" />
+                            </LinearGradientBrush>
+                        </TextBlock.Foreground>
+                    </TextBlock>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8" Margin="0,8,0,0">
+                        <Border Background="{StaticResource Surface2Brush}" BorderBrush="{StaticResource Border2Brush}"
+                                BorderThickness="1" CornerRadius="5" Padding="7,2">
+                            <TextBlock Text="{Binding SteamlessVersion, FallbackValue='0.0.0', StringFormat='v{0}'}"
+                                       Foreground="{StaticResource Text2Brush}" FontSize="10.5" />
+                        </Border>
+                        <Border Background="#1F8B7CFF" CornerRadius="5" Padding="7,2">
+                            <TextBlock Text="FORK" FontSize="9" FontWeight="SemiBold" Foreground="#A99EFF" />
+                        </Border>
+                    </StackPanel>
+
+                    <TextBlock Text="A maintained SteamStub DRM remover" Foreground="{StaticResource Text2Brush}" FontSize="13"
+                               HorizontalAlignment="Center" Margin="0,12,0,0" />
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="4" Margin="0,12,0,0">
+                        <Button Classes="link" Content="Upstream"
+                                Command="{Binding OpenHyperlinkCommand}" CommandParameter="https://github.com/atom0s/Steamless" />
+                        <Button Classes="link" Content="This fork"
+                                Command="{Binding OpenHyperlinkCommand}" CommandParameter="https://github.com/K0oRui/Steamless-KR" />
+                    </StackPanel>
+
+                    <Border Height="1" Background="{StaticResource Border2Brush}" Margin="0,24,0,0" HorizontalAlignment="Stretch" />
+
+                    <controls:CollapsibleSection Header="Credits" Description="People and projects behind this fork"
+                                                 Margin="0,16,0,0">
+                        <controls:CollapsibleSection.Icon>
+                            <LucideIcon Kind="Users" Size="16" StrokeWidth="1.8" Foreground="{StaticResource IconBrush}" />
+                        </controls:CollapsibleSection.Icon>
+                        <StackPanel>
+                            <Border Height="1" Background="{StaticResource Border2Brush}" Margin="16,0" />
+                            <StackPanel Margin="16,12,16,16">
+                                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" RowSpacing="8">
+                                    <TextBlock Text="atom0s" Foreground="{StaticResource Text1Brush}" FontSize="12" />
+                                    <TextBlock Grid.Column="1" Text="Original author" Foreground="{StaticResource Text2Brush}" FontSize="11"
+                                               VerticalAlignment="Center" />
+                                    <TextBlock Grid.Row="1" Text="TheReaperJay" Foreground="{StaticResource Text1Brush}" FontSize="12" />
+                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="Modernization base" Foreground="{StaticResource Text2Brush}"
+                                               FontSize="11" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Row="2" Text="Cyanic (Golem_x86)" Foreground="{StaticResource Text1Brush}" FontSize="12" />
+                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="Research" Foreground="{StaticResource Text2Brush}"
+                                               FontSize="11" VerticalAlignment="Center" />
+                                </Grid>
+                                <Border Height="1" Background="{StaticResource Border2Brush}" Margin="0,12,0,12" />
+                                <TextBlock TextWrapping="Wrap" FontSize="11" LineHeight="16" Foreground="{StaticResource Text2Brush}"
+                                           Text="Built with Avalonia, ShadUI, CommunityToolkit.Mvvm, Lucide icons, and SVG.Controls.Avalonia." />
+                            </StackPanel>
+                        </StackPanel>
+                    </controls:CollapsibleSection>
+
+                    <controls:CollapsibleSection Header="License and legal" Description="Terms, warranty, and trademarks"
+                                                 Margin="0,16,0,0">
+                        <controls:CollapsibleSection.Icon>
+                            <LucideIcon Kind="Gavel" Size="16" StrokeWidth="1.8" Foreground="{StaticResource IconBrush}" />
+                        </controls:CollapsibleSection.Icon>
+                        <StackPanel>
+                            <Border Height="1" Background="{StaticResource Border2Brush}" Margin="16,0" />
+                            <StackPanel Margin="16,12,16,16" Spacing="12">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="License" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Text1Brush}" />
+                                    <TextBlock TextWrapping="Wrap" FontSize="11" LineHeight="16" Foreground="{StaticResource Text2Brush}"
+                                               Text="Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International." />
+                                </StackPanel>
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="Use" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Text1Brush}" />
+                                    <TextBlock TextWrapping="Wrap" FontSize="11" LineHeight="16" Foreground="{StaticResource Text2Brush}"
+                                               Text="Use Steamless only on games you legally own. It is not intended for piracy or malicious use." />
+                                </StackPanel>
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="Warranty" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Text1Brush}" />
+                                    <TextBlock TextWrapping="Wrap" FontSize="11" LineHeight="16" Foreground="{StaticResource Text2Brush}"
+                                               Text="Unless otherwise separately undertaken by the Licensor, to the extent possible, the Licensor offers the Licensed Material as-is and as-available, and makes no representations or warranties of any kind concerning the Licensed Material, whether express, implied, statutory, or other. This includes, without limitation, warranties of title, merchantability, fitness for a particular purpose, non-infringement, absence of latent or other defects, accuracy, or the presence or absence of errors, whether or not known or discoverable. Where disclaimers of warranties are not allowed in full or in part, this disclaimer may not apply to You." />
+                                </StackPanel>
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="Trademarks" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Text1Brush}" />
+                                    <TextBlock TextWrapping="Wrap" FontSize="11" LineHeight="16" Foreground="{StaticResource Text2Brush}"
+                                               Text="Steamless is not associated with Steam, Valve, or any of their partners or affiliates. No code used within Steamless is taken from Valve. All work is original and done for educational purposes." />
+                                    <TextBlock TextWrapping="Wrap" FontSize="11" LineHeight="16" Foreground="{StaticResource Text2Brush}"
+                                               Margin="0,4,0,0"
+                                               Text="Steam © 2003 - 2024 Valve Corporation. All rights reserved." />
+                                </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+                    </controls:CollapsibleSection>
+                </StackPanel>
+            </Grid>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

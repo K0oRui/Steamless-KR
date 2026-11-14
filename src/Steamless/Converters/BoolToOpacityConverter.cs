@@ -25,15 +25,22 @@
  * No warranties are given.
  */
 
-namespace Steamless.Model
+namespace Steamless.Converters
 {
-    using API.Model;
+    using Avalonia.Data.Converters;
     using System;
-    using System.Collections.Generic;
+    using System.Globalization;
 
-    public interface IDataService
+    public class BoolToOpacityConverter : IValueConverter
     {
-        Version GetSteamlessVersion();
-        List<SteamlessPlugin> GetSteamlessPlugins();
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            return value is bool visible && visible ? 1.0 : 0.0;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            throw new NotSupportedException();
+        }
     }
 }

@@ -1,0 +1,261 @@
+﻿<!--
+ * Steamless - Copyright (c) 2015 - 2024 atom0s [atom0s@live.com]
+ *
+ * This work is licensed under the Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License.
+ * To view a copy of this license, visit http://creativecommons.org/licenses/by-nc-nd/4.0/ or send a letter to
+ * Creative Commons, PO Box 1866, Mountain View, CA 94042, USA.
+ *
+ * By using Steamless, you agree to the above license and its terms.
+ *
+ *      Attribution - You must give appropriate credit, provide a link to the license and indicate if changes were
+ *                    made. You must do so in any reasonable manner, but not in any way that suggests the licensor
+ *                    endorses you or your use.
+ *
+ *   Non-Commercial - You may not use the material (Steamless) for commercial purposes.
+ *
+ *   No-Derivatives - If you remix, transform, or build upon the material (Steamless), you may not distribute the
+ *                    modified material. You are, however, allowed to submit the modified works back to the original
+ *                    Steamless project in attempt to have it added to the original project.
+ *
+ * You may not apply legal terms or technological measures that legally restrict others
+ * from doing anything the license permits.
+ *
+ * No warranties are given.
+-->
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:shadui="clr-namespace:ShadUI;assembly=ShadUI"
+             xmlns:controls="using:Steamless.Controls"
+             xmlns:converters="using:Steamless.Converters"
+             xmlns:presentation="using:Steamless.Presentation"
+             RequestedThemeVariant="Dark"
+             x:Class="Steamless.App">
+    <Application.Resources>
+        <SolidColorBrush x:Key="BgBrush" Color="#1E1E1E" />
+        <SolidColorBrush x:Key="Surface1Brush" Color="#2D2D2D" />
+        <SolidColorBrush x:Key="Surface2Brush" Color="#3C3C3C" />
+        <SolidColorBrush x:Key="Surface3Brush" Color="#505050" />
+        <SolidColorBrush x:Key="Border1Brush" Color="#555555" />
+        <SolidColorBrush x:Key="Border2Brush" Color="#414141" />
+        <SolidColorBrush x:Key="Text1Brush" Color="#E1E1E1" />
+        <SolidColorBrush x:Key="Text2Brush" Color="#D7D7D7" />
+        <SolidColorBrush x:Key="Text3Brush" Color="#232323" />
+        <SolidColorBrush x:Key="AccentBrush" Color="#8B7CFF" />
+        <SolidColorBrush x:Key="MutedBrush" Color="#8F97A6" />
+        <SolidColorBrush x:Key="IconBrush" Color="#A9B0BD" />
+
+        <converters:BoolToAngleConverter x:Key="BoolToAngleConverter" />
+
+        <ControlTheme x:Key="{x:Type CheckBox}" TargetType="CheckBox">
+            <Setter Property="Foreground" Value="{StaticResource Text1Brush}" />
+            <Setter Property="FontSize" Value="12.5" />
+            <Setter Property="MinHeight" Value="30" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Grid Background="Transparent">
+                        <Border HorizontalAlignment="Left" CornerRadius="6"
+                                Padding="6,3" Margin="-6,-3" Background="Transparent">
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                                <Border Name="Box" Width="18" Height="18" CornerRadius="5"
+                                        Background="#00000000" BorderBrush="{StaticResource Border1Brush}" BorderThickness="1"
+                                        VerticalAlignment="Center">
+                                    <Border.Transitions>
+                                        <Transitions>
+                                            <BrushTransition Property="Background" Duration="{x:Static presentation:ShellMotion.Hover}" />
+                                            <BrushTransition Property="BorderBrush" Duration="{x:Static presentation:ShellMotion.Hover}" />
+                                        </Transitions>
+                                    </Border.Transitions>
+                                    <controls:CheckMark Name="Check" Width="10" Height="8"
+                                                        Stroke="{StaticResource Text3Brush}" StrokeThickness="1.8"
+                                                        Progress="0" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                        <controls:CheckMark.Transitions>
+                                            <Transitions>
+                                                <DoubleTransition Property="Progress" Duration="{x:Static presentation:ShellMotion.Check}" Easing="{x:Static presentation:ShellMotion.EaseOut}" />
+                                            </Transitions>
+                                        </controls:CheckMark.Transitions>
+                                    </controls:CheckMark>
+                                </Border>
+                                <ContentPresenter Grid.Column="1"
+                                                  Content="{TemplateBinding Content}"
+                                                  ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                  Foreground="{TemplateBinding Foreground}"
+                                                  VerticalAlignment="Center"
+                                                  HorizontalAlignment="Left" />
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </ControlTemplate>
+            </Setter>
+            <Style Selector="^:pointerover /template/ Border#Box">
+                <Setter Property="BorderBrush" Value="#8F97A6" />
+            </Style>
+            <Style Selector="^:checked /template/ Border#Box">
+                <Setter Property="Background" Value="#FFFFFF" />
+                <Setter Property="BorderBrush" Value="#FFFFFF" />
+            </Style>
+            <Style Selector="^:checked /template/ controls|CheckMark">
+                <Setter Property="Progress" Value="1" />
+            </Style>
+            <Style Selector="^:checked:pointerover /template/ Border#Box">
+                <Setter Property="Background" Value="#F2F2F6" />
+                <Setter Property="BorderBrush" Value="#F2F2F6" />
+            </Style>
+            <Style Selector="^:pressed /template/ Border#Box">
+                <Setter Property="Background" Value="{StaticResource Surface3Brush}" />
+            </Style>
+            <Style Selector="^:pressed:checked /template/ Border#Box">
+                <Setter Property="Background" Value="#E4E4EA" />
+                <Setter Property="BorderBrush" Value="#E4E4EA" />
+            </Style>
+            <Style Selector="^:focus-visible /template/ Border#Box">
+                <Setter Property="BorderBrush" Value="#8B7CFF" />
+                <Setter Property="BorderThickness" Value="2" />
+            </Style>
+            <Style Selector="^:disabled">
+                <Setter Property="Opacity" Value="0.45" />
+            </Style>
+        </ControlTheme>
+
+        <ControlTheme x:Key="SectionHeader" TargetType="ToggleButton">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="16,0" />
+            <Setter Property="Height" Value="52" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Name="Surface" Background="{TemplateBinding Background}"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          HorizontalContentAlignment="Stretch"
+                                          VerticalContentAlignment="Center" />
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+            <Style Selector="^:pointerover /template/ Border#Surface">
+                <Setter Property="Background" Value="{StaticResource Surface2Brush}" />
+            </Style>
+            <Style Selector="^:pressed /template/ Border#Surface">
+                <Setter Property="Background" Value="{StaticResource Surface3Brush}" />
+            </Style>
+        </ControlTheme>
+
+        <ControlTheme x:Key="{x:Type controls:CollapsibleSection}" TargetType="controls:CollapsibleSection">
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Name="Card" Background="{StaticResource Surface1Brush}" BorderBrush="{StaticResource Border2Brush}"
+                            BorderThickness="1" CornerRadius="10" ClipToBounds="True">
+                        <Border.Transitions>
+                            <Transitions>
+                                <BrushTransition Property="BorderBrush" Duration="{x:Static presentation:ShellMotion.Fade}" />
+                            </Transitions>
+                        </Border.Transitions>
+
+                        <StackPanel>
+                            <ToggleButton Name="PART_Header" Theme="{StaticResource SectionHeader}"
+                                          IsChecked="{TemplateBinding IsExpanded, Mode=TwoWay}">
+                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                                    <Border Width="28" Height="28" CornerRadius="8" Background="{StaticResource Surface2Brush}"
+                                            VerticalAlignment="Center">
+                                        <ContentPresenter Content="{TemplateBinding Icon}"
+                                                          HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+                                        <TextBlock Text="{TemplateBinding Header}" FontSize="13"
+                                                   Foreground="{StaticResource Text1Brush}" />
+                                        <TextBlock Text="{TemplateBinding Description}" FontSize="10.5"
+                                                   Foreground="{StaticResource Text2Brush}" />
+                                    </StackPanel>
+                                    <controls:ChevronIcon Grid.Column="2" Width="18" Height="18" VerticalAlignment="Center"
+                                                          IsHitTestVisible="False" Stroke="{StaticResource MutedBrush}" StrokeThickness="1.6"
+                                                          Angle="{TemplateBinding IsExpanded, Converter={StaticResource BoolToAngleConverter}}">
+                                        <controls:ChevronIcon.Transitions>
+                                            <Transitions>
+                                                <DoubleTransition Property="Angle" Duration="{x:Static presentation:ShellMotion.Slow}" Easing="{x:Static presentation:ShellMotion.EaseOut}" />
+                                            </Transitions>
+                                        </controls:ChevronIcon.Transitions>
+                                    </controls:ChevronIcon>
+                                </Grid>
+                            </ToggleButton>
+
+                            <Border Name="PART_Body" MaxHeight="0" Opacity="0" ClipToBounds="True">
+                                <Border.Transitions>
+                                    <Transitions>
+                                        <DoubleTransition Property="MaxHeight" Duration="{x:Static presentation:ShellMotion.Collapse}" Easing="{x:Static presentation:ShellMotion.EaseOut}" />
+                                        <DoubleTransition Property="Opacity" Duration="{x:Static presentation:ShellMotion.CollapseFade}" Easing="{x:Static presentation:ShellMotion.EaseOut}" />
+                                    </Transitions>
+                                </Border.Transitions>
+                                <ContentPresenter Name="PART_Presenter"
+                                                  Content="{TemplateBinding Content}"
+                                                  ContentTemplate="{TemplateBinding ContentTemplate}" />
+                            </Border>
+                        </StackPanel>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </ControlTheme>
+    </Application.Resources>
+
+    <Application.Styles>
+        <shadui:ShadTheme />
+        <Style Selector="Button.caption">
+            <Setter Property="Width" Value="32" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Foreground" Value="{StaticResource Text1Brush}" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="shadui:ButtonAssist.HoverBackground" Value="#4D505050" />
+        </Style>
+        <Style Selector="Button.caption.close">
+            <Setter Property="shadui:ButtonAssist.HoverBackground" Value="#99B23A48" />
+        </Style>
+        <Style Selector="Button.caption.close:pointerover">
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+        <Style Selector="GroupBox">
+            <Setter Property="Background" Value="#662D2D2D" />
+            <Setter Property="Foreground" Value="{StaticResource Text1Brush}" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="BorderBrush" Value="{StaticResource Border2Brush}" />
+        </Style>
+        <Style Selector="TextBox">
+            <Setter Property="Background" Value="#593C3C3C" />
+            <Setter Property="Foreground" Value="{StaticResource Text1Brush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource Border2Brush}" />
+            <Setter Property="CornerRadius" Value="5" />
+            <Setter Property="Padding" Value="12,6" />
+        </Style>
+        <Style Selector="Button.Secondary">
+            <Setter Property="Background" Value="#593C3C3C" />
+            <Setter Property="Foreground" Value="{StaticResource Text1Brush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource Border2Brush}" />
+            <Setter Property="CornerRadius" Value="5" />
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="shadui:ButtonAssist.HoverBackground" Value="#8C505050" />
+        </Style>
+        <Style Selector="ToolTip">
+            <Setter Property="Background" Value="#F23C3C3C" />
+            <Setter Property="Foreground" Value="{StaticResource Text1Brush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource Border1Brush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="10,7" />
+            <Setter Property="FontSize" Value="11.5" />
+        </Style>
+        <Style Selector="FlyoutPresenter">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="CornerRadius" Value="0" />
+        </Style>
+    </Application.Styles>
+</Application>

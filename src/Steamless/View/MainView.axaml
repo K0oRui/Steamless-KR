@@ -1,0 +1,319 @@
+﻿<!--
+ * Steamless - Copyright (c) 2015 - 2024 atom0s [atom0s@live.com]
+ *
+ * This work is licensed under the Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License.
+ * To view a copy of this license, visit http://creativecommons.org/licenses/by-nc-nd/4.0/ or send a letter to
+ * Creative Commons, PO Box 1866, Mountain View, CA 94042, USA.
+ *
+ * By using Steamless, you agree to the above license and its terms.
+ *
+ *      Attribution - You must give appropriate credit, provide a link to the license and indicate if changes were
+ *                    made. You must do so in any reasonable manner, but not in any way that suggests the licensor
+ *                    endorses you or your use.
+ *
+ *   Non-Commercial - You may not use the material (Steamless) for commercial purposes.
+ *
+ *   No-Derivatives - If you remix, transform, or build upon the material (Steamless), you may not distribute the
+ *                    modified material. You are, however, allowed to submit the modified works back to the original
+ *                    Steamless project in attempt to have it added to the original project.
+ *
+ * You may not apply legal terms or technological measures that legally restrict others
+ * from doing anything the license permits.
+ *
+ * No warranties are given.
+-->
+<UserControl x:Class="Steamless.View.MainView"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:shadui="clr-namespace:ShadUI;assembly=ShadUI"
+             xmlns:controls="using:Steamless.Controls"
+             xmlns:converters="using:Steamless.Converters"
+             xmlns:model="using:Steamless.API.Model"
+             xmlns:presentation="using:Steamless.Presentation"
+             xmlns:vm="using:Steamless.ViewModel"
+             x:CompileBindings="True"
+             x:DataType="vm:MainWindowViewModel">
+
+    <UserControl.Styles>
+        <Style Selector="Button.logAction">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="8,2" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Foreground" Value="{StaticResource Text2Brush}" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="shadui:ButtonAssist.HoverBackground" Value="{StaticResource Surface2Brush}" />
+        </Style>
+        <Style Selector="Button.unpack">
+            <Setter Property="Height" Value="42" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Background" Value="{StaticResource Surface2Brush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource Border2Brush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Foreground" Value="{StaticResource Text1Brush}" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="shadui:ButtonAssist.HoverBackground" Value="{StaticResource Surface3Brush}" />
+        </Style>
+        <Style Selector="Button.unpack.cancel">
+            <Setter Property="BorderBrush" Value="#B23A48" />
+            <Setter Property="shadui:ButtonAssist.HoverBackground" Value="#33B23A48" />
+        </Style>
+        <Style Selector="Button.pluginField">
+            <Setter Property="Height" Value="42" />
+            <Setter Property="Margin" Value="4" />
+            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Background" Value="#593C3C3C" />
+            <Setter Property="BorderBrush" Value="{StaticResource Border2Brush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="5" />
+        </Style>
+        <Style Selector="Button.pluginField:pointerover">
+            <Setter Property="Background" Value="#8C505050" />
+        </Style>
+        <Style Selector="Button.pluginField:pressed">
+            <Setter Property="Background" Value="#B3505050" />
+        </Style>
+        <Style Selector="ListBox.pluginList">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
+
+        <Style Selector="ListBox.logList">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
+
+        <Style Selector="Button.browseItem">
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="Height" Value="36" />
+            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Foreground" Value="{StaticResource Text1Brush}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="shadui:ButtonAssist.HoverBackground" Value="{StaticResource Surface2Brush}" />
+        </Style>
+    </UserControl.Styles>
+
+    <UserControl.Resources>
+        <converters:LogMessageTypeConverter x:Key="LogMessageTypeConverter" />
+
+        <ControlTheme x:Key="LogItem" TargetType="ListBoxItem">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <ContentPresenter Name="PART_ContentPresenter"
+                                      Background="{TemplateBinding Background}"
+                                      Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      HorizontalContentAlignment="Stretch" />
+                </ControlTemplate>
+            </Setter>
+            <Style Selector="^:pointerover">
+                <Setter Property="Background" Value="Transparent" />
+            </Style>
+            <Style Selector="^:selected">
+                <Setter Property="Background" Value="Transparent" />
+            </Style>
+        </ControlTheme>
+
+        <ControlTheme x:Key="PluginItem" TargetType="ListBoxItem">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{StaticResource Text1Brush}" />
+            <Setter Property="Padding" Value="12,8" />
+            <Setter Property="Margin" Value="0,0,0,4" />
+            <Setter Property="CornerRadius" Value="5" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <ContentPresenter Name="PART_ContentPresenter"
+                                      Background="{TemplateBinding Background}"
+                                      CornerRadius="{TemplateBinding CornerRadius}"
+                                      Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      Padding="{TemplateBinding Padding}"
+                                      Foreground="{TemplateBinding Foreground}"
+                                      HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                      VerticalContentAlignment="Center" />
+                </ControlTemplate>
+            </Setter>
+            <Style Selector="^:pointerover">
+                <Setter Property="Background" Value="{StaticResource Surface2Brush}" />
+            </Style>
+            <Style Selector="^:selected">
+                <Setter Property="Background" Value="#FFFFFF" />
+                <Setter Property="Foreground" Value="{StaticResource Text3Brush}" />
+            </Style>
+            <Style Selector="^:selected:pointerover">
+                <Setter Property="Background" Value="#F2F2F6" />
+            </Style>
+        </ControlTheme>
+    </UserControl.Resources>
+
+    <Grid x:Name="LayoutRoot">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <GroupBox Grid.Row="0" Margin="12" Header="Select File or Folder">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBox Grid.Column="0" Margin="4" PlaceholderText="No file or folder selected" Text="{Binding InputPath}" />
+                <Button Grid.Column="1" x:Name="BrowseButton" Classes="Secondary" Content="Browse" Width="84" Margin="4" ClickMode="Press"
+                        AutomationProperties.Name="Browse" controls:FlyoutMotion.IsEnabled="True">
+                    <Button.Flyout>
+                        <Flyout Placement="BottomEdgeAlignedRight">
+                            <Border Background="#D92D2D2D" BorderBrush="{StaticResource Border2Brush}" BorderThickness="1"
+                                    CornerRadius="9" Padding="6" MinWidth="190">
+                                <StackPanel Spacing="2">
+                                    <Button Classes="browseItem" Click="BrowseFile_Click" AutomationProperties.Name="Select File...">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <LucideIcon Kind="File" Size="14" StrokeWidth="1.8" Foreground="{StaticResource IconBrush}" />
+                                            <TextBlock Text="Select File..." />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Classes="browseItem" Click="BrowseFolder_Click" AutomationProperties.Name="Select Folder...">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <LucideIcon Kind="Folder" Size="14" StrokeWidth="1.8" Foreground="{StaticResource IconBrush}" />
+                                            <TextBlock Text="Select Folder..." />
+                                        </StackPanel>
+                                    </Button>
+                                </StackPanel>
+                            </Border>
+                        </Flyout>
+                    </Button.Flyout>
+                </Button>
+            </Grid>
+        </GroupBox>
+
+        <GroupBox Grid.Row="1" Margin="12,0,12,12" Header="Select Plugin">
+            <Button x:Name="PluginButton" Classes="pluginField" ClickMode="Press"
+                    AutomationProperties.Name="Select Plugin"
+                    controls:FlyoutMotion.IsEnabled="True"
+                    controls:FlyoutMotion.Chevron="{Binding #ChevronSpinner}">
+                <Button.Template>
+                    <ControlTemplate>
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="{TemplateBinding CornerRadius}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter Content="{TemplateBinding Content}"
+                                              HorizontalContentAlignment="Stretch"
+                                              VerticalContentAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Button.Template>
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="{Binding SelectedPlugin.Name, FallbackValue='No plugin loaded'}"
+                               FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource Text1Brush}" VerticalAlignment="Center" />
+                    <controls:ChevronIcon Grid.Column="1" x:Name="ChevronSpinner" Width="20" Height="20"
+                                          Margin="12,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                                          Stroke="{StaticResource MutedBrush}" StrokeThickness="1.8" Angle="0">
+                        <controls:ChevronIcon.Transitions>
+                            <Transitions>
+                                <DoubleTransition Property="Angle" Duration="{x:Static presentation:ShellMotion.Slow}" Easing="{x:Static presentation:ShellMotion.EaseOut}" />
+                            </Transitions>
+                        </controls:ChevronIcon.Transitions>
+                    </controls:ChevronIcon>
+                </Grid>
+                <Button.Flyout>
+                    <Flyout Placement="BottomEdgeAlignedLeft" VerticalOffset="8">
+                        <Border Background="{StaticResource Surface1Brush}" BorderBrush="{StaticResource Border2Brush}" BorderThickness="1"
+                                CornerRadius="10" Padding="6,6,6,2">
+                            <ListBox Classes="pluginList" Padding="0" BorderThickness="0" ItemsSource="{Binding Plugins}"
+                                     ItemContainerTheme="{StaticResource PluginItem}"
+                                     SelectedIndex="{Binding SelectedPluginIndex, Mode=TwoWay}"
+                                     PointerReleased="PluginList_PointerReleased"
+                                     KeyDown="PluginList_KeyDown"
+                                     KeyUp="PluginList_KeyUp" MaxHeight="320">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate x:DataType="model:PluginSelection">
+                                        <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="Medium" />
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Border>
+                    </Flyout>
+                </Button.Flyout>
+            </Button>
+        </GroupBox>
+
+        <GroupBox Grid.Row="2" Margin="12,0,12,12" Header="Unpacking Options">
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="24" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="4">
+                <CheckBox Content="Verbose Output" ToolTip.Tip="Shows debug messages. Turn it on when a file will not unpack." IsChecked="{Binding Options.VerboseOutput}" />
+                <CheckBox Grid.Row="1" Content="Keep Bind Section" ToolTip.Tip="Keeps the .bind section, which holds SteamStub's DRM code. Only useful when studying the stub." IsChecked="{Binding Options.KeepBindSection}" />
+                <CheckBox Grid.Row="2" Content="Dump Payload To Disk" ToolTip.Tip="Writes the stub payload next to the target as a .payload file. For stub analysis." IsChecked="{Binding Options.DumpPayloadToDisk}" />
+                <CheckBox Grid.Row="3" Content="Dump SteamDRMP.dll To Disk" ToolTip.Tip="Writes the embedded SteamDRMP.dll next to the target. For stub analysis." IsChecked="{Binding Options.DumpSteamDrmpToDisk}" />
+                <CheckBox Grid.Column="1" Content="Don't Realign Sections" ToolTip.Tip="Leaves section values alone, which keeps the file small. Uncheck to round sections up to alignment boundaries. Some loaders need that." IsChecked="{Binding Options.DontRealignSections}" />
+                <CheckBox Grid.Row="1" Grid.Column="1" Content="Zero DOS Stub Data" ToolTip.Tip="Overwrites the DOS stub area with zeros. SteamStub hides code there. Leave this on." IsChecked="{Binding Options.ZeroDosStubData}" />
+                <CheckBox Grid.Row="2" Grid.Column="1" Content="Recalculate File Checksum" ToolTip.Tip="Recalculates the PE checksum after unpacking. Drivers need a valid checksum, most files do not." IsChecked="{Binding Options.RecalculateFileChecksum}" />
+            </Grid>
+        </GroupBox>
+
+        <GroupBox Grid.Row="3" Margin="12,0,12,12" Header="Log">
+            <Grid RowDefinitions="Auto,*">
+                <Grid ColumnDefinitions="*,Auto" Margin="4,0,4,8">
+                    <Button Grid.Column="1" Classes="logAction" Content="Clear Log" Command="{Binding ClearLogCommand}" />
+                </Grid>
+                <ListBox Grid.Row="1" x:Name="LogList" Classes="logList" Padding="0" BorderThickness="0"
+                         ItemsSource="{Binding Log}"
+                         ItemContainerTheme="{StaticResource LogItem}"
+                         SelectionMode="Single"
+                         Focusable="False"
+                         ScrollViewer.VerticalScrollBarVisibility="Auto"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="model:LogEntry">
+                            <Grid ColumnDefinitions="24,*" Margin="4,4">
+                                <LucideIcon Grid.Column="0" Kind="{Binding MessageType, Converter={StaticResource LogMessageTypeConverter}, ConverterParameter=Icon}"
+                                            Size="14" StrokeWidth="1.8" VerticalAlignment="Top" Margin="0,2,0,0"
+                                            Foreground="{Binding MessageType, Converter={StaticResource LogMessageTypeConverter}, ConverterParameter=Brush}"
+                                            ToolTip.Tip="{Binding MessageType, Converter={StaticResource LogMessageTypeConverter}, ConverterParameter=Tooltip}" />
+                                <TextBlock Grid.Column="1" Text="{Binding Line}"
+                                           FontFamily="Cascadia Mono, Consolas" FontSize="12" LineHeight="17" TextWrapping="Wrap"
+                                           Foreground="{StaticResource Text1Brush}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+        </GroupBox>
+
+        <Grid Grid.Row="4" Margin="12" Background="Transparent">
+            <Button Classes="unpack" HorizontalAlignment="Stretch" VerticalAlignment="Center"
+                    AutomationProperties.Name="Unpack File"
+                    IsVisible="{Binding !IsUnpacking}"
+                    Command="{Binding UnpackFileCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <LucideIcon Kind="PackageOpen" Size="16" StrokeWidth="1.8" Foreground="#E1E1E1" />
+                    <TextBlock Text="Unpack File" />
+                </StackPanel>
+            </Button>
+            <Button Classes="unpack cancel" HorizontalAlignment="Stretch" VerticalAlignment="Center"
+                    AutomationProperties.Name="Cancel Unpack"
+                    IsVisible="{Binding IsUnpacking}"
+                    Command="{Binding CancelUnpackCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <LucideIcon Kind="X" Size="16" StrokeWidth="2" Foreground="#E1E1E1" />
+                    <TextBlock Text="Cancel" />
+                </StackPanel>
+            </Button>
+        </Grid>
+    </Grid>
+</UserControl>

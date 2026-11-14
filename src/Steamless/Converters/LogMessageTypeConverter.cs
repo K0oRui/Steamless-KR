@@ -25,29 +25,34 @@
  * No warranties are given.
  */
 
-namespace Steamless.Model.Tasks
+namespace Steamless.Converters
 {
-    using API.Model;
-    using CommunityToolkit.Mvvm.ComponentModel;
-    using System.Threading.Tasks;
+    using Avalonia.Data.Converters;
+    using System;
+    using System.Globalization;
 
-    public abstract partial class BaseTask : ObservableObject
+    /// <summary>
+    /// Turns a log level into the part of its presentation a binding asks for. The parameter is
+    /// "Icon", "Brush" or "Tooltip"; the table behind it is <see cref="LogMessageTypePresentation"/>.
+    /// </summary>
+    public class LogMessageTypeConverter : IValueConverter
     {
-        [ObservableProperty] private bool _completed;
-        [ObservableProperty] private double _progress;
-        [ObservableProperty] private double _progressTotal;
-        [ObservableProperty] private string _text;
-
-        public Task StartTask()
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            return Task.Run(async () =>
-                {
-                    this.Completed = false;
-                    await this.DoTask();
-                    this.Completed = true;
-                });
+            var entry = LogMessageTypePresentation.For(value);
+
+            return (parameter as string) switch
+            {
+                "Icon" => entry.Icon,
+                "Brush" => entry.Brush,
+                "Tooltip" => entry.Tooltip,
+                _ => entry,
+            };
         }
 
-        public abstract Task DoTask();
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            throw new NotSupportedException();
+        }
     }
 }

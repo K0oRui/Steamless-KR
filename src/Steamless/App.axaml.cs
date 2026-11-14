@@ -27,50 +27,40 @@
 
 namespace Steamless
 {
-    using Microsoft.Extensions.DependencyInjection;
-    using Model;
-    using Steamless.API;
+    using Avalonia;
+    using Avalonia.Controls.ApplicationLifetimes;
+    using Avalonia.Markup.Xaml;
     using Steamless.API.Services;
-    using System;
-    using System.IO;
-    using System.Reflection;
     using ViewModel;
+    using View;
 
-    public partial class App
+    public partial class App : Application
     {
-        public static IServiceProvider Services { get; private set; }
-
-        static App()
-        {
-            AppDomain.CurrentDomain.AssemblyResolve += (sender, e) =>
-            {
-                try
-                {
-                    var name = e.Name.Contains(",") ? e.Name.Substring(0, e.Name.IndexOf(",", StringComparison.InvariantCultureIgnoreCase)) : e.Name.Replace(".dll", "");
-
-                    if (name.EndsWith(".resources", StringComparison.OrdinalIgnoreCase))
-                        return null;
-
-                    var f = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Plugins", name + ".dll");
-                    if (!File.Exists(f))
-                        return null;
-
-                    return Assembly.Load(File.ReadAllBytes(f));
-                }
-                catch (Exception)
-                {
-                    return null;
-                }
-            };
-        }
+        public static MainWindowViewModel ViewModel { get; private set; }
 
         public App()
         {
-            Services = new ServiceCollection()
-                .AddSingleton<IDataService, DataService>()
-                .AddSingleton<LoggingService>()
-                .AddSingleton<MainWindowViewModel>()
-                .BuildServiceProvider();
+        }
+
+        public override void Initialize()
+        {
+            AvaloniaXamlLoader.Load(this);
+        }
+
+        public override void OnFrameworkInitializationCompleted()
+        {
+            PluginLoader.AttachAssemblyResolver();
+
+            if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            {
+                var loggingService = new LoggingService();
+                App.ViewModel = new MainWindowViewModel(loggingService);
+
+                desktop.MainWindow = new MainWindow();
+                SingleInstance.Listen(desktop.MainWindow);
+            }
+
+            base.OnFrameworkInitializationCompleted();
         }
     }
 }

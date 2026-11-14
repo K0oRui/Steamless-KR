@@ -1,6 +1,4 @@
-﻿#nullable disable
-
-/**
+﻿/**
  * Steamless - Copyright (c) 2015 - 2024 atom0s [atom0s@live.com]
  *
  * This work is licensed under the Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License.
@@ -25,17 +23,46 @@
  * No warranties are given.
  */
 
-namespace Steamless.View
-{
-    using Microsoft.Extensions.DependencyInjection;
-    using Steamless.ViewModel;
+using System;
+using Avalonia;
 
-    public partial class MainWindow
+namespace Steamless
+{
+    internal static class Program
     {
-        public MainWindow()
+        [STAThread]
+        public static void Main(string[] args)
         {
-            this.InitializeComponent();
-            this.DataContext = App.Services.GetRequiredService<MainWindowViewModel>();
+            if (!SingleInstance.TryAcquire())
+                return;
+
+            BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+        }
+
+        public static AppBuilder BuildAvaloniaApp()
+        {
+            var builder = AppBuilder.Configure<App>()
+                .UsePlatformDetect()
+                .WithInterFont()
+                .LogToTrace();
+
+            if (OperatingSystem.IsWindows())
+                builder = builder.With(Program.Win32Options());
+
+            return builder;
+        }
+
+        /// <summary>
+        /// The Windows renderer and compositor choices. The app renders entirely on the CPU, so
+        /// no GPU device or GL context is created and the UI behaves the same on every machine.
+        /// </summary>
+        private static Win32PlatformOptions Win32Options()
+        {
+            return new Win32PlatformOptions
+            {
+                RenderingMode = new[] { Win32RenderingMode.Software },
+                CompositionMode = new[] { Win32CompositionMode.RedirectionSurface },
+            };
         }
     }
 }

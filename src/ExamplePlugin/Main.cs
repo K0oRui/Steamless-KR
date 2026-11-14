@@ -30,41 +30,37 @@ namespace ExamplePlugin
     using Steamless.API;
     using Steamless.API.Events;
     using Steamless.API.Model;
+    using Steamless.API.PE;
     using Steamless.API.Services;
     using System;
-    using System.Reflection;
 
-    [SteamlessApiVersion(1, 0)]
+    [SteamlessApiVersion(1, 2)]
     public class Main : SteamlessPlugin
     {
-        private LoggingService m_LoggingService;
-
         public override string Author => "Steamless Development Team";
 
         public override string Name => "Example Plugin";
 
         public override string Description => "A simple plugin example.";
 
-        public override Version Version => Assembly.GetExecutingAssembly().GetName().Version;
-
         public override bool Initialize(LoggingService logService)
         {
-            this.m_LoggingService = logService;
-            this.m_LoggingService.OnAddLogMessage(this, new LogMessageEventArgs("ExamplePlugin was initialized!", LogMessageType.Debug));
+            base.Initialize(logService);
+            this.Log("ExamplePlugin initialized.", LogMessageType.Debug);
 
             return true;
         }
 
-        public override bool CanProcessFile(string file)
+        public override bool CanProcessFile(PeImage file)
         {
-            this.m_LoggingService.OnAddLogMessage(this, new LogMessageEventArgs("ExamplePlugin was asked to check if it can process a file!", LogMessageType.Debug));
+            this.Log("ExamplePlugin was asked whether it can process a file.", LogMessageType.Debug);
 
             return false;
         }
 
-        public override bool ProcessFile(string file, SteamlessOptions options)
+        public override bool ProcessFile(PeImage file, SteamlessOptions options)
         {
-            this.m_LoggingService.OnAddLogMessage(this, new LogMessageEventArgs("ExamplePlugin was asked to process a file!", LogMessageType.Debug));
+            this.Log("ExamplePlugin is processing this file.", LogMessageType.Debug);
 
             return false;
         }

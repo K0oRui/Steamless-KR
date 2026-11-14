@@ -30,193 +30,182 @@ namespace Steamless.ViewModel
     using API.Events;
     using API.Model;
     using API.Services;
+    using Avalonia;
+    using Avalonia.Controls;
+    using Avalonia.Controls.ApplicationLifetimes;
+    using Avalonia.Platform.Storage;
+    using Avalonia.Threading;
     using CommunityToolkit.Mvvm.ComponentModel;
     using CommunityToolkit.Mvvm.Input;
-    using Microsoft.Win32;
     using Model;
-    using Model.Tasks;
     using System;
-    using System.Collections.Concurrent;
+    using System.Collections.Generic;
     using System.Collections.ObjectModel;
     using System.Diagnostics;
     using System.IO;
     using System.Linq;
     using System.Threading;
     using System.Threading.Tasks;
-    using System.Windows;
-    using System.Windows.Documents;
-    using System.Windows.Input;
 
     public partial class MainWindowViewModel : ObservableObject
     {
-        private readonly IDataService m_DataService;
+        private const int StartupDelayMilliseconds = 400;
+        private const int MaxLogEntries = 5000;
 
         private readonly LoggingService m_LoggingService;
+        private readonly LogFeed m_LogFeed;
+        private readonly LogLines m_LogLines;
 
-        private CancellationTokenSource m_TaskCts;
+        private UnpackSession m_Session;
 
-        private bool m_IsUnpacking;
+        private UnpackRunner m_Runner;
 
-        [ObservableProperty] private ApplicationState _state;
-        [ObservableProperty] private Version _steamlessVersion;
-        [ObservableProperty] private BaseTask _currentTask;
-        [ObservableProperty] private ConcurrentBag<BaseTask> _tasks;
-        [ObservableProperty] private bool _showAboutView;
-        [ObservableProperty] private ObservableCollection<SteamlessPlugin> _plugins;
-        [ObservableProperty] private int _selectedPluginIndex;
-        [ObservableProperty] private string _inputFilePath;
-        [ObservableProperty] private SteamlessOptions _options;
-        [ObservableProperty] private ObservableCollection<LogMessageEventArgs> _log;
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(ShowSplashView))]
+        [NotifyPropertyChangedFor(nameof(ShowMainView))]
+        [NotifyPropertyChangedFor(nameof(ShowAboutViewPanel))]
+        private ApplicationState m_State;
+        [ObservableProperty] private Version m_SteamlessVersion;
+        [ObservableProperty] private string m_StatusText;
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(ShowMainView))]
+        [NotifyPropertyChangedFor(nameof(ShowAboutViewPanel))]
+        private bool m_ShowAboutView;
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(SelectedPlugin))]
+        private ObservableCollection<PluginSelection> m_Plugins;
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(SelectedPlugin))]
+        private int m_SelectedPluginIndex;
+        [ObservableProperty] private string m_InputPath;
+        [ObservableProperty] private SteamlessOptions m_Options;
 
-        public MainWindowViewModel(IDataService dataService, LoggingService logService)
+        /// <summary>
+        /// The bindable lines the panel shows. The feed owns which lines exist; this list only
+        /// replays its changes on the UI thread, so the view never guesses at a trim.
+        /// </summary>
+        public ReadOnlyObservableCollection<LogEntry> Log => this.m_LogLines.Items;
+
+        public PluginSelection SelectedPlugin =>
+            this.Plugins != null && this.SelectedPluginIndex >= 0 && this.SelectedPluginIndex < this.Plugins.Count
+                ? this.Plugins[this.SelectedPluginIndex]
+                : null;
+
+        /// <summary>
+        /// The runner owns whether a run is in flight; the view needs to hear when that changes.
+        /// </summary>
+        public bool IsUnpacking => this.m_Runner != null && this.m_Runner.IsRunning;
+
+        public bool ShowSplashView => this.State == ApplicationState.Initializing;
+
+        public bool ShowMainView => this.State == ApplicationState.Running && !this.ShowAboutView;
+
+        public bool ShowAboutViewPanel => this.State == ApplicationState.Running && this.ShowAboutView;
+
+        public MainWindowViewModel(LoggingService logService)
         {
-            this.m_DataService = dataService;
             this.m_LoggingService = logService;
 
             this.State = ApplicationState.Initializing;
-            this.Tasks = new ConcurrentBag<BaseTask>();
             this.Options = new SteamlessOptions();
-            this.Log = new ObservableCollection<LogMessageEventArgs>();
+            this.InputPath = string.Empty;
             this.ShowAboutView = false;
-            this.InputFilePath = string.Empty;
 
-            logService.AddLogMessage += this.AddLogMessage;
-            logService.ClearLogMessages += this.ClearLogMessages;
+            this.m_LogFeed = new LogFeed(logService, () => this.Options.VerboseOutput, MaxLogEntries);
+            this.m_LogLines = new LogLines(this.m_LogFeed, MainWindowViewModel.OnUiThread);
 
-            this.AddLogMessage(this, new LogMessageEventArgs("Steamless (c) 2015 - 2024 atom0s [atom0s@live.com]", LogMessageType.Debug));
-            this.AddLogMessage(this, new LogMessageEventArgs("Website: http://atom0s.com/", LogMessageType.Debug));
+            this.m_LogFeed.Add("Steamless-KR (c) 2015 - 2024 atom0s, fork by K0oRui", LogMessageType.Information);
+            this.m_LogFeed.Add("Upstream: atom0s/Steamless - This fork: K0oRui/Steamless-KR", LogMessageType.Debug);
 
-            this.Initialize();
+            _ = this.InitializeAsync();
         }
 
-        private void Initialize()
+        private async Task InitializeAsync()
         {
-            this.CurrentTask = new StatusTask("Initializing..");
-            this.SteamlessVersion = this.m_DataService.GetSteamlessVersion();
+            this.StatusText = "Initializing...";
+            this.SteamlessVersion = ReadVersion();
 
-            this.Tasks.Add(new LoadPluginsTask(this.m_DataService, this.m_LoggingService));
-
-            this.Tasks.Add(new StartSteamlessTask());
-
-            if (this.m_TaskCts != null)
-                return;
-            this.m_TaskCts = new CancellationTokenSource();
-            _ = Task.Run(() => this.ProcessTasksLoopAsync(this.m_TaskCts.Token));
-        }
-
-        private async Task ProcessTasksLoopAsync(CancellationToken ct)
-        {
-            while (!ct.IsCancellationRequested && this.State != ApplicationState.Closing)
-            {
-                if (this.Tasks.TryTake(out var task))
-                {
-                    Application.Current.Dispatcher.Invoke(() => this.CurrentTask = task);
-
-                    try
-                    {
-                        await this.CurrentTask.StartTask();
-                    }
-                    catch (Exception ex)
-                    {
-                        this.AddLogMessage(this, new LogMessageEventArgs($"Task '{task.Text}' failed: {ex.Message}", LogMessageType.Error));
-                    }
-
-                    // LoadPluginsTask mutates ObservableCollection, so apply its result on the UI thread.
-                    if (task is LoadPluginsTask lpt && lpt.LoadedPlugins != null)
-                    {
-                        Application.Current.Dispatcher.Invoke(() =>
-                        {
-                            this.Plugins = lpt.LoadedPlugins;
-                            this.SelectedPluginIndex = 0;
-                        });
-                    }
-                }
-                else
-                {
-                    if (this.State == ApplicationState.Initializing)
-                        this.State = ApplicationState.Running;
-                }
-
-                try
-                {
-                    await Task.Delay(200, ct);
-                }
-                catch (OperationCanceledException)
-                {
-                    break;
-                }
-            }
-        }
-
-        private void AddLogMessage(object sender, LogMessageEventArgs e)
-        {
-            // Debug messages are only shown when verbose output is enabled.
-            if (!this.Options.VerboseOutput && e.MessageType == LogMessageType.Debug)
-                return;
-
-            // Marshal to the UI thread since the log is an ObservableCollection.
-            if (Application.Current == null)
-                return;
-
-            if (!Application.Current.Dispatcher.CheckAccess())
-            {
-                Application.Current.Dispatcher.Invoke(() => this.AddLogMessage(sender, e));
-                return;
-            }
-
-            var prefix = "[Unknown]";
             try
             {
-                if (sender != null)
-                    prefix = $"[{sender.GetType().Assembly.GetName().Name}]";
+                var plugins = await Task.Run(this.LoadPlugins);
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    this.Plugins = plugins;
+                    this.SelectedPluginIndex = 0;
+                });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Ignore sender assembly lookup failures; fall back to "[Unknown]".
+                this.m_LogFeed.Add($"Could not load plugins: {ex.Message}", LogMessageType.Error);
             }
 
-            var entry = new LogMessageEventArgs($"{prefix} {e.Message}", e.MessageType);
-            this.Log.Add(entry);
+            // Keep the splash up long enough to read instead of flashing past on fast machines.
+            await Task.Delay(StartupDelayMilliseconds);
+
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                if (this.State == ApplicationState.Initializing)
+                    this.State = ApplicationState.Running;
+
+                this.StatusText = string.Empty;
+            });
         }
 
-        private void ClearLogMessages(object sender, EventArgs e)
+        private static Version ReadVersion()
         {
-            // Marshal to the UI thread since the log is an ObservableCollection.
-            if (Application.Current == null)
-                return;
-
-            if (!Application.Current.Dispatcher.CheckAccess())
-            {
-                Application.Current.Dispatcher.Invoke(() => this.ClearLogMessages(sender, e));
-                return;
-            }
-
-            this.Log.Clear();
+            var version = typeof(MainWindowViewModel).Assembly.GetName().Version;
+            return version == null ? new Version(0, 0, 0) : new Version(version.Major, version.Minor, Math.Max(version.Build, 0));
         }
 
-        [RelayCommand]
-        private void WindowClose()
+        private ObservableCollection<PluginSelection> LoadPlugins()
         {
+            // Plugin DLLs pull their dependencies from the same folder, so the resolver has to be
+            // in place before the first load. The session attaches it and owns the plugins for the
+            // life of the app.
+            var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Plugins");
+            this.m_Session = UnpackSession.Load(path, this.m_LoggingService);
+            this.m_Runner = new UnpackRunner(this.m_Session, this.m_LogFeed);
+            this.m_Runner.RunningChanged += this.OnRunStateChanged;
+
+            return new ObservableCollection<PluginSelection>(this.m_Session.Selections);
+        }
+
+        /// <summary>
+        /// The feed announces on whichever thread logged; the bound list has to change on the UI one.
+        /// </summary>
+        private static void OnUiThread(Action action)
+        {
+            if (Dispatcher.UIThread.CheckAccess())
+                action();
+            else
+                Dispatcher.UIThread.Post(action);
+        }
+
+        private void OnRunStateChanged(object sender, EventArgs e)
+        {
+            MainWindowViewModel.OnUiThread(() => this.OnPropertyChanged(nameof(IsUnpacking)));
+        }
+
+        private static Window GetMainWindow()
+        {
+            return (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+        }
+
+        public void Shutdown()
+        {
+            this.m_Runner?.Cancel();
+
+            // A run in flight is cancelled above; disposing its plugins underneath it would
+            // race with the worker, and the process is exiting anyway.
+            if (!this.IsUnpacking)
+                this.m_Session?.Dispose();
+
+            // Stop taking changes before the feed stops making them, so a late plugin message
+            // cannot reach a list the window has already let go of.
+            this.m_LogLines.Dispose();
+            this.m_LogFeed.Dispose();
+
             this.State = ApplicationState.Closing;
-
-            this.m_TaskCts?.Cancel();
-            this.m_TaskCts = null;
-
-            Application.Current.Shutdown(0);
-        }
-
-        [RelayCommand]
-        private static void WindowMinimize()
-        {
-            if (Application.Current.MainWindow != null)
-                Application.Current.MainWindow.WindowState = WindowState.Minimized;
-        }
-
-        [RelayCommand]
-        private void WindowMouseDown(MouseButtonEventArgs args)
-        {
-            if (Application.Current.MainWindow != null)
-                Application.Current.MainWindow.DragMove();
         }
 
         [RelayCommand]
@@ -226,111 +215,82 @@ namespace Steamless.ViewModel
         }
 
         [RelayCommand]
-        private void OpenHyperlink(object parameter)
+        private void OpenHyperlink(string url)
         {
-            if (parameter is Hyperlink link && link.NavigateUri != null)
-                Process.Start(new ProcessStartInfo(link.NavigateUri.AbsoluteUri) { UseShellExecute = true });
+            if (string.IsNullOrEmpty(url))
+                return;
+
+            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
         }
 
         [RelayCommand]
-        private void DragDrop(DragEventArgs args)
+        private async Task SelectFileAsync()
         {
-            args.Handled = true;
+            var window = GetMainWindow();
+            if (window == null)
+                return;
 
-            if (args.Data.GetDataPresent(DataFormats.FileDrop))
+            var files = await window.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
             {
-                // Only accept the first dropped file.
-                var files = (string[])args.Data.GetData(DataFormats.FileDrop);
-                if (files != null && files.Length >= 1)
-                    this.InputFilePath = files[0];
-            }
+                AllowMultiple = false,
+                FileTypeFilter = new[]
+                {
+                    new FilePickerFileType("Executable Files (*.exe)") { Patterns = new[] { "*.exe" } },
+                    new FilePickerFileType("All Files (*.*)") { Patterns = new[] { "*.*" } }
+                },
+                SuggestedStartLocation = await window.StorageProvider.TryGetFolderFromPathAsync(AppDomain.CurrentDomain.BaseDirectory)
+            });
+
+            if (files.Count > 0)
+                this.InputPath = files[0].TryGetLocalPath();
         }
 
         [RelayCommand]
-        private void PreviewDragEnter(DragEventArgs args)
+        private async Task SelectFolderAsync()
         {
-            args.Handled = true;
+            var window = GetMainWindow();
+            if (window == null)
+                return;
 
-            if (args.Data.GetDataPresent(DataFormats.FileDrop))
+            var folders = await window.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
             {
-                // Accept only single-file drops.
-                var files = (string[])args.Data.GetData(DataFormats.FileDrop);
-                args.Effects = files != null && files.Length == 1 ? DragDropEffects.Move : DragDropEffects.None;
-            }
-            else
-                args.Effects = DragDropEffects.None;
-        }
+                AllowMultiple = false,
+                SuggestedStartLocation = await window.StorageProvider.TryGetFolderFromPathAsync(AppDomain.CurrentDomain.BaseDirectory)
+            });
 
-        [RelayCommand]
-        private void BrowseForInputFile()
-        {
-            var ofd = new OpenFileDialog
-            {
-                CheckFileExists = true,
-                CheckPathExists = true,
-                DefaultExt = "*.exe",
-                Filter = "Executable Files (*.exe)|*.exe|All Files (*.*)|*.*",
-                FilterIndex = 0,
-                InitialDirectory = Path.GetFullPath(AppDomain.CurrentDomain.BaseDirectory),
-                Multiselect = false,
-                RestoreDirectory = true
-            };
-
-            var showDialog = ofd.ShowDialog();
-            if (showDialog != null && (bool)showDialog)
-                this.InputFilePath = ofd.FileName;
+            if (folders.Count > 0)
+                this.InputPath = folders[0].TryGetLocalPath();
         }
 
         [RelayCommand]
         private async Task UnpackFileAsync()
         {
-            // Plugins are singletons and ProcessFile mutates instance state; never run two unpacks at once.
-            if (this.m_IsUnpacking)
+            if (string.IsNullOrWhiteSpace(this.InputPath))
+            {
+                this.m_LogFeed.Add("Select a file or folder first.", LogMessageType.Warning);
                 return;
-            this.m_IsUnpacking = true;
-
-            try
-            {
-                await Task.Run(() =>
-                {
-                    if (this.SelectedPluginIndex == -1)
-                        return;
-                    if (this.Plugins == null || this.SelectedPluginIndex >= this.Plugins.Count)
-                        return;
-                    if (string.IsNullOrEmpty(this.InputFilePath))
-                        return;
-
-                    try
-                    {
-                        var plugin = this.Plugins[this.SelectedPluginIndex];
-                        if (plugin == null)
-                            throw new Exception("Invalid plugin selected.");
-
-                        // Dispatch to the selected plugin; it re-dispatches to its siblings.
-                        var siblings = this.Plugins.Where(p => p != plugin);
-                        if (plugin.CanProcessFile(this.InputFilePath))
-                            this.AddLogMessage(this, !plugin.ProcessFile(this.InputFilePath, this.Options, siblings) ? new LogMessageEventArgs("Failed to unpack file.", LogMessageType.Error) : new LogMessageEventArgs("Successfully unpacked file!", LogMessageType.Success));
-                        else
-                            this.AddLogMessage(this, new LogMessageEventArgs("Failed to unpack file.", LogMessageType.Error));
-                    }
-                    catch (Exception ex)
-                    {
-                        this.AddLogMessage(this, new LogMessageEventArgs("Caught unhandled exception trying to unpack file.", LogMessageType.Error));
-                        this.AddLogMessage(this, new LogMessageEventArgs("Exception:", LogMessageType.Error));
-                        this.AddLogMessage(this, new LogMessageEventArgs(ex.Message, LogMessageType.Error));
-                    }
-                });
             }
-            finally
+
+            var selection = this.SelectedPlugin;
+            if (this.m_Runner == null || selection == null)
             {
-                this.m_IsUnpacking = false;
+                this.m_LogFeed.Add("Plugins are still loading.", LogMessageType.Warning);
+                return;
             }
+
+            await this.m_Runner.RunAsync(new[] { this.InputPath }, selection, this.Options);
+        }
+
+        [RelayCommand]
+        private void CancelUnpack()
+        {
+            this.m_Runner?.Cancel();
         }
 
         [RelayCommand]
         private void ClearLog()
         {
-            this.ClearLogMessages(this, EventArgs.Empty);
+            this.m_LogFeed.Clear();
         }
     }
 }

@@ -25,20 +25,19 @@
  * No warranties are given.
  */
 
-namespace Steamless.Model.Tasks
+namespace Steamless.View
 {
-    using System.Threading.Tasks;
+    using Avalonia.Controls;
 
-    public class StatusTask : BaseTask
+    /// <summary>
+    /// The About page. Its sections expand and collapse, and its scroll edges fade, through the
+    /// shell controls, so this page holds no state of its own.
+    /// </summary>
+    public partial class AboutView : UserControl
     {
-        public StatusTask(string msg)
+        public AboutView()
         {
-            this.Text = msg;
-        }
-
-        public override async Task DoTask()
-        {
-            await Task.Delay(1000);
+            this.InitializeComponent();
         }
     }
 }

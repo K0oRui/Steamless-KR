@@ -25,13 +25,27 @@
  * No warranties are given.
  */
 
-namespace Steamless.View
+namespace Steamless.Converters
 {
-    public partial class MainView
+    using Avalonia.Data.Converters;
+    using Presentation;
+    using System;
+    using System.Globalization;
+
+    /// <summary>
+    /// Turns the section's expanded flag into the chevron angle the motion module defines, so the
+    /// bound chevron and the flyout's chevron cannot disagree.
+    /// </summary>
+    public class BoolToAngleConverter : IValueConverter
     {
-        public MainView()
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            this.InitializeComponent();
+            return ShellMotion.ChevronAngle(value is true);
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            throw new NotSupportedException();
         }
     }
 }

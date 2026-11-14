@@ -25,20 +25,15 @@
  * No warranties are given.
  */
 
-namespace Steamless.Model.Tasks
+namespace Steamless.View
 {
-    using System.Threading.Tasks;
+    using Avalonia.Controls;
 
-    public class StartSteamlessTask : BaseTask
+    public partial class SplashView : UserControl
     {
-        public StartSteamlessTask()
+        public SplashView()
         {
-            this.Text = "Starting Steamless...";
-        }
-
-        public override async Task DoTask()
-        {
-            await Task.Delay(1000);
+            this.InitializeComponent();
         }
     }
 }
