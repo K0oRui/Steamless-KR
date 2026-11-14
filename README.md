@@ -14,7 +14,7 @@
 >
 > ### GUI
 >
-> - The WPF shell is now Avalonia 12, with a custom title bar, splash screen, animated About page, ShadUI controls, Lucide icons, and an SVG logo.
+> - The WPF shell is now Avalonia 12, with a custom title bar, splash screen, animated About page, ShadUI controls, Lucide icons, and a vector logo.
 > - Input accepts a file or a folder. Folder input is walked for `.exe` files, skipping `.unpacked.exe` and reparse points, and every executable found is offered to the selected plugin.
 > - The plugin picker lists one entry per SteamStub variant, with 3.0 and 3.1 as separate entries backed by one module. That module reads the layout from the stub's declared header size and the bitness from each file, so both entries are labelled x86/x64 and the separate x86 and x64 copies are gone. Picking a variant pins the run to that layout.
 > - Unpacking runs off the UI thread and can be cancelled. Options are snapshotted per run, log messages are marshaled to the UI thread in batches, and the log is capped at 5,000 entries.
@@ -161,7 +161,7 @@ dotnet publish .\src\Steamless\Steamless.csproj -c Release -r win-x86 --self-con
 **Notes:**
 - The checks in `tests/Steamless.Tests` build their own PE fixtures, so they need no game binaries and run in CI. The unpacker corpus harness in `tests/` is separate and stays local.
 - The released binaries are framework-dependent. They need the .NET 10.0 runtime installed on Windows and Linux.
-- Windows releases ship as two archives, `windows-x64` and `windows-x86`. The x86 build runs on 32-bit and 64-bit Windows 10 1607 or newer and needs the x86 .NET runtime even on a 64-bit machine. Avalonia lists x86 Windows as tier 3, so it is built but not part of its test matrix.
+- Windows releases ship as two `.zip` archives, `windows-x64` and `windows-x86`. The x86 build runs on 32-bit and 64-bit Windows 10 1607 or newer and needs the x86 .NET runtime even on a 64-bit machine. Avalonia lists x86 Windows as tier 3, so it is built but not part of its test matrix.
 - Source code is under `src/`. All plugin DLLs are loaded dynamically from `Plugins/` at runtime. A solution build stages the plugin DLLs, `Steamless.Unpacker.Common.dll` and `Iced.dll` into the output `Plugins/` folder. The release workflow stages them into the release archive too.
 - All plugin assemblies are AnyCPU (MSIL), so they load in both 32-bit and 64-bit host processes.
 - The solution can be built from Visual Studio or the `dotnet` CLI.

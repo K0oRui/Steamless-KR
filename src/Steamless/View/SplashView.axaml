@@ -25,7 +25,7 @@
 <UserControl x:Class="Steamless.View.SplashView"
              xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:svg="using:Avalonia.Svg"
+             xmlns:controls="using:Steamless.Controls"
              xmlns:vm="using:Steamless.ViewModel"
              x:CompileBindings="True"
              x:DataType="vm:MainWindowViewModel">
@@ -43,8 +43,7 @@
             </Ellipse>
 
             <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,-48,0,0">
-                <Image Source="{svg:SvgImage avares://Steamless/Assets/steam.svg}"
-                       Width="96" Height="96" HorizontalAlignment="Center" />
+                <controls:SteamLogo Width="96" Height="96" HorizontalAlignment="Center" />
 
                 <TextBlock Text="Steamless-KR" FontSize="28" FontWeight="Bold"
                            HorizontalAlignment="Center" Margin="0,16,0,0">

@@ -42,12 +42,11 @@ namespace Steamless
         public static AppBuilder BuildAvaloniaApp()
         {
             var builder = AppBuilder.Configure<App>()
-                .UsePlatformDetect()
-                .WithInterFont()
+                .UseWin32()
+                .UseSkia()
+                .UseHarfBuzz()
+                .With(Program.Win32Options())
                 .LogToTrace();
-
-            if (OperatingSystem.IsWindows())
-                builder = builder.With(Program.Win32Options());
 
             return builder;
         }

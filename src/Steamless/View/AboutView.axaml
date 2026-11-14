@@ -27,7 +27,6 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:shadui="clr-namespace:ShadUI;assembly=ShadUI"
              xmlns:controls="using:Steamless.Controls"
-             xmlns:svg="using:Avalonia.Svg"
              xmlns:vm="using:Steamless.ViewModel"
              x:CompileBindings="True"
              x:DataType="vm:MainWindowViewModel">
@@ -48,8 +47,7 @@
         <ScrollViewer VerticalScrollBarVisibility="Auto" controls:ScrollFade.IsEnabled="True">
             <Grid MinHeight="{Binding $parent[ScrollViewer].Bounds.Height}">
                 <StackPanel MaxWidth="480" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="0">
-                    <Image Source="{svg:SvgImage avares://Steamless/Assets/steam.svg}"
-                           Width="76" HorizontalAlignment="Center" Margin="0,0,0,12" />
+                    <controls:SteamLogo Width="76" HorizontalAlignment="Center" Margin="0,0,0,12" />
 
                     <TextBlock Text="Steamless-KR" FontSize="30" FontWeight="Bold" HorizontalAlignment="Center">
                         <TextBlock.Foreground>

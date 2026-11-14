@@ -48,11 +48,31 @@ namespace Steamless.View
         }
 
         /// <summary>
+        /// The main view is built once the splash ends. Building it at startup made the first
+        /// window wait for a full visual tree that the splash was covering anyway.
+        /// </summary>
+        private void CreateMainView()
+        {
+            var host = this.FindControl<ContentControl>("MainHost");
+            if (host == null)
+                return;
+
+            host.Content ??= new MainView();
+        }
+
+        /// <summary>
         /// The About page is built on first use. Most runs never open it, so parsing and laying out
         /// that view at startup would be wasted work. The host fades in either way.
         /// </summary>
         private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
+            if (e.PropertyName == nameof(MainWindowViewModel.ShowMainView))
+            {
+                if (App.ViewModel.ShowMainView)
+                    this.CreateMainView();
+                return;
+            }
+
             if (e.PropertyName == nameof(MainWindowViewModel.ShowSplashView))
             {
                 if (!App.ViewModel.ShowSplashView)

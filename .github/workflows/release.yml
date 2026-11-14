@@ -219,9 +219,9 @@ jobs:
         shell: bash
         run: dotnet build src/Steamless.CLI -c Release -r win-${{ matrix.arch }} --self-contained false
 
-      - name: Publish GUI (ReadyToRun)
+      - name: Publish GUI
         shell: bash
-        run: dotnet publish src/Steamless/Steamless.csproj -c Release -r win-${{ matrix.arch }} --self-contained false -p:PublishReadyToRun=true -o publish/gui
+        run: dotnet publish src/Steamless/Steamless.csproj -c Release -r win-${{ matrix.arch }} --self-contained false -p:DebugType=None -p:DebugSymbols=false -o publish/gui
 
       - name: Stage artifacts
         shell: bash
@@ -241,6 +241,10 @@ jobs:
           if [ -f "dist/Steamless.API.dll" ]; then
             cp dist/Steamless.API.dll dist/Plugins/
           fi
+
+          # Debug symbols are most of the archive; the Skia and HarfBuzz native
+          # PDBs alone are 100 MB.
+          find dist -name '*.pdb' -delete
 
           echo "=== Plugin DLLs ==="
           # The build stages every plugin into the CLI output; nothing to collect by hand.
@@ -296,6 +300,8 @@ jobs:
             cp dist/Steamless.API.dll dist/Plugins/
           fi
 
+          find dist -name '*.pdb' -delete
+
           echo "=== Plugin DLLs ==="
           # The build stages every plugin into the CLI output; nothing to collect by hand.
           ls -la dist/Plugins/
@@ -338,10 +344,12 @@ jobs:
       - name: Package archives
         run: |
           VERSION="${{ needs.bump-version.outputs.version }}"
+          command -v 7z >/dev/null || { sudo apt-get update && sudo apt-get install -y p7zip-full; }
           for arch in x64 x86; do
             dir="artifacts/steamless-Windows-${arch}"
             [ -d "$dir" ] || continue
-            (cd "$dir" && zip -r "../../Steamless-${VERSION}-windows-${arch}.zip" .)
+            # 7z's deflate encoder beats Info-ZIP by a few hundred KB and still writes a plain zip.
+            (cd "$dir" && 7z a -tzip -mx=9 "../../Steamless-${VERSION}-windows-${arch}.zip" .)
           done
           if [ -d "artifacts/steamless-Linux" ]; then
             cd artifacts/steamless-Linux && tar czf "../../Steamless-${VERSION}-linux.tar.gz" . && cd ../..

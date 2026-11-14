@@ -10,7 +10,7 @@
         xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:shadui="clr-namespace:ShadUI;assembly=ShadUI"
-        xmlns:svg="using:Avalonia.Svg"
+        xmlns:controls="using:Steamless.Controls"
         xmlns:converters="using:Steamless.Converters"
         xmlns:presentation="using:Steamless.Presentation"
         xmlns:view="using:Steamless.View"
@@ -49,8 +49,7 @@
                   Background="Transparent"
                   PointerPressed="TitleBar_PointerPressed">
                 <StackPanel Orientation="Horizontal" Spacing="12" Margin="12,0,0,0" VerticalAlignment="Center">
-                    <Image Source="{svg:SvgImage avares://Steamless/Assets/steam.svg}"
-                           Width="24" Height="24" />
+                    <controls:SteamLogo Width="24" Height="24" />
                     <TextBlock Text="Steamless-KR" FontSize="13" FontWeight="SemiBold"
                                Foreground="{StaticResource Text1Brush}" VerticalAlignment="Center" />
                 </StackPanel>
@@ -104,14 +103,15 @@
                         </Transitions>
                     </view:SplashView.Transitions>
                 </view:SplashView>
-                <view:MainView Opacity="{Binding ShowMainView, Converter={StaticResource BoolToOpacityConverter}}"
-                               IsHitTestVisible="{Binding ShowMainView}" IsEnabled="{Binding ShowMainView}">
-                    <view:MainView.Transitions>
+                <ContentControl x:Name="MainHost"
+                                Opacity="{Binding ShowMainView, Converter={StaticResource BoolToOpacityConverter}}"
+                                IsHitTestVisible="{Binding ShowMainView}" IsEnabled="{Binding ShowMainView}">
+                    <ContentControl.Transitions>
                         <Transitions>
                             <DoubleTransition Property="Opacity" Duration="{x:Static presentation:ShellMotion.Slow}" />
                         </Transitions>
-                    </view:MainView.Transitions>
-                </view:MainView>
+                    </ContentControl.Transitions>
+                </ContentControl>
                 <ContentControl x:Name="AboutHost"
                                 Opacity="{Binding ShowAboutViewPanel, Converter={StaticResource BoolToOpacityConverter}}"
                                 IsHitTestVisible="{Binding ShowAboutViewPanel}" IsEnabled="{Binding ShowAboutViewPanel}">

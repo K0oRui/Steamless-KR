@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <ProjectGuid>{10AC8FDE-09D9-47B4-AA89-BADC40EECAAB}</ProjectGuid>
     <OutputType>WinExe</OutputType>
@@ -15,22 +15,44 @@
 
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="12.1.2" />
-    <PackageReference Include="Avalonia.Desktop" Version="12.1.2" />
+    <!-- Windows-only target: Avalonia.Desktop would also pull in the X11, macOS
+         and FreeDesktop backends, which this app never loads. -->
+    <PackageReference Include="Avalonia.Win32" Version="12.1.2" />
+    <PackageReference Include="Avalonia.HarfBuzz" Version="12.1.2" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.2" />
-    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.2" />
     <PackageReference Include="Avalonia.Skia" Version="12.1.2" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="ShadUI" Version="0.2.4" />
-    <PackageReference Include="Svg.Controls.Avalonia" Version="12.0.0.17" />
   </ItemGroup>
 
   <ItemGroup>
-    <AvaloniaResource Include="Assets\steam.svg" />
     <AvaloniaResource Include="Assets\steam.ico" />
+  </ItemGroup>
+
+  <!--
+    Crossgen of the app assembly produced a runtime fail-fast with the lazily built main
+    view, so the app stays IL while its dependencies are precompiled.
+  -->
+  <ItemGroup>
+    <PublishReadyToRunExclude Include="Steamless" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Steamless.API\Steamless.API.csproj" />
     <ProjectReference Include="@(UnpackerProject)" ReferenceOutputAssembly="false" Private="false" />
   </ItemGroup>
+
+  <!--
+    Binaries the app never loads. ANGLE is dead because the renderer is software
+    only; DesignerSupport and Remote.Protocol serve the XAML previewer and the
+    dev tools. Avalonia.Metal stays: without it the window paints black.
+  -->
+  <Target Name="DropUnusedAvaloniaBinaries" AfterTargets="Publish" Condition="'$(PublishDir)' != ''">
+    <ItemGroup>
+      <_UnusedAvaloniaBinary Include="$(PublishDir)av_libglesv2.dll" />
+      <_UnusedAvaloniaBinary Include="$(PublishDir)Avalonia.DesignerSupport.dll" />
+      <_UnusedAvaloniaBinary Include="$(PublishDir)Avalonia.Remote.Protocol.dll" />
+    </ItemGroup>
+    <Delete Files="@(_UnusedAvaloniaBinary)" />
+  </Target>
 </Project>
