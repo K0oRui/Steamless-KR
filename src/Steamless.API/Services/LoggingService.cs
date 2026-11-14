@@ -28,22 +28,20 @@
 namespace Steamless.API.Services
 {
     using Events;
-    using System;
 
+    public delegate void AddLogMessageEventHandler(object sender, LogMessageEventArgs e);
+
+    /// <summary>
+    /// Carries log lines from the plugins to whichever host is listening. The sender is the
+    /// plugin, or null for a host message.
+    /// </summary>
     public class LoggingService
     {
-        public event SteamlessEvents.AddLogMessageEventHandler AddLogMessage;
-
-        public event SteamlessEvents.ClearLogMessagesEventHandler ClearLogMessages;
+        public event AddLogMessageEventHandler AddLogMessage;
 
         public virtual void OnAddLogMessage(object sender, LogMessageEventArgs e)
         {
             this.AddLogMessage?.Invoke(sender, e);
-        }
-
-        public virtual void OnClearLogMessages(object sender, EventArgs e)
-        {
-            this.ClearLogMessages?.Invoke(sender, e);
         }
     }
 }

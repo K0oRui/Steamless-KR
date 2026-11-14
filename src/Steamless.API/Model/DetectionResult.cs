@@ -1,4 +1,4 @@
-﻿#nullable disable
+﻿#nullable enable
 
 /**
  * Steamless - Copyright (c) 2015 - 2024 atom0s [atom0s@live.com]
@@ -25,15 +25,38 @@
  * No warranties are given.
  */
 
-namespace Steamless.API
+namespace Steamless.API.Model
 {
-    using Events;
-    using System;
+    using System.Collections.Generic;
 
-    public class SteamlessEvents
+    /// <summary>
+    /// What the unpackers see in a file without unpacking it. The CLI prints these values and the
+    /// test corpus reads them, so the fields match the printed lines.
+    /// </summary>
+    public sealed class DetectionResult
     {
-        public delegate void AddLogMessageEventHandler(object sender, LogMessageEventArgs e);
+        private readonly string[] m_ClaimingPlugins;
 
-        public delegate void ClearLogMessagesEventHandler(object sender, EventArgs e);
+        public DetectionResult(bool hasImage, bool is64Bit, bool hasBindSection, string[] claimingPlugins)
+        {
+            this.HasImage = hasImage;
+            this.Is64Bit = is64Bit;
+            this.HasBindSection = hasBindSection;
+            this.m_ClaimingPlugins = claimingPlugins ?? new string[0];
+        }
+
+        /// <summary>False when the file is missing, unreadable, or not a PE image.</summary>
+        public bool HasImage { get; }
+
+        /// <summary>Only meaningful when <see cref="HasImage"/> is true.</summary>
+        public bool Is64Bit { get; }
+
+        public bool HasBindSection { get; }
+
+        /// <summary>
+        /// The plugins that claim the file, each named as specifically as it can. A plugin that
+        /// covers several layouts reports the one it found.
+        /// </summary>
+        public IReadOnlyList<string> ClaimingPlugins => this.m_ClaimingPlugins;
     }
 }

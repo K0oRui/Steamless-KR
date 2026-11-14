@@ -28,14 +28,13 @@
 namespace Steamless.API.Crypto
 {
     using System;
-    using System.Collections.Generic;
-    using System.IO;
     using System.Security.Cryptography;
 
     public class AesHelper : IDisposable
     {
         private readonly byte[] m_OriginalKey;
         private readonly byte[] m_OriginalIv;
+        private byte[] m_WorkingIv;
         private Aes m_AesCryptoProvider;
 
         // codeql[cs/ecb-encryption] ECB mode required for SteamStub variant compatibility
@@ -43,6 +42,7 @@ namespace Steamless.API.Crypto
         {
             this.m_OriginalKey = key;
             this.m_OriginalIv = iv;
+            this.m_WorkingIv = iv;
 
             this.m_AesCryptoProvider = Aes.Create();
             this.m_AesCryptoProvider.Key = key;
@@ -56,6 +56,8 @@ namespace Steamless.API.Crypto
             this.Dispose(false);
         }
 
+        private byte[] WorkingIv => this.m_WorkingIv ?? this.m_OriginalIv;
+
         public void Dispose()
         {
             this.Dispose(true);
@@ -67,18 +69,30 @@ namespace Steamless.API.Crypto
             this.m_AesCryptoProvider?.Dispose();
             this.m_AesCryptoProvider = null;
         }
-
+        /// <summary>
+        /// Derives the working IV from the stub's IV. The input array stays untouched, so a second
+        /// call starts from the same place.
+        /// </summary>
         public bool RebuildIv(byte[] iv = null)
         {
-            if (iv == null)
-                iv = this.m_OriginalIv;
+            var source = iv ?? this.m_OriginalIv;
+
+            var blockSize = this.m_AesCryptoProvider.BlockSize / 8;
+            if (source == null || source.Length != blockSize)
+                return false;
 
             try
             {
+                // Transform into a separate buffer so input and output never alias.
+                var transformed = new byte[source.Length];
                 using (var decryptor = this.m_AesCryptoProvider.CreateDecryptor())
                 {
-                    return decryptor.TransformBlock(iv, 0, iv.Length, this.m_OriginalIv, 0) > 0;
+                    if (decryptor.TransformBlock(source, 0, source.Length, transformed, 0) <= 0)
+                        return false;
                 }
+
+                this.m_WorkingIv = transformed;
+                return true;
             }
             catch (Exception)
             {
@@ -86,42 +100,72 @@ namespace Steamless.API.Crypto
             }
         }
 
-        public byte[] Decrypt(byte[] data, CipherMode mode, PaddingMode padding)
+        /// <summary>
+        /// Decrypts prefix followed by source as one stream, writing up to destinationLength
+        /// bytes to destination. The 3.x stubs keep the first ciphertext block in the header, and
+        /// joining the two into one array would cost a full copy of the code section. The source
+        /// is a window onto the file, so the caller never hands over the image's bytes.
+        /// </summary>
+        public bool Decrypt(byte[] prefix, ReadOnlyMemory<byte> source, int sourceLength, byte[] destination, int destinationLength, CipherMode mode, PaddingMode padding)
         {
+            const int ChunkSize = 0x10000;
+
             ICryptoTransform decryptor = null;
-            MemoryStream mStream = null;
-            CryptoStream cStream = null;
 
             try
             {
+                var blockSize = this.m_AesCryptoProvider.BlockSize / 8;
+                var prefixLength = prefix?.Length ?? 0;
+
+                if (destination == null || destinationLength <= 0)
+                    return false;
+                if (sourceLength <= 0 || sourceLength > source.Length || prefixLength % blockSize != 0 || sourceLength % blockSize != 0)
+                    return false;
+
                 this.m_AesCryptoProvider.Mode = mode;
                 this.m_AesCryptoProvider.Padding = padding;
 
-                decryptor = this.m_AesCryptoProvider.CreateDecryptor(this.m_OriginalKey, this.m_OriginalIv);
+                decryptor = this.m_AesCryptoProvider.CreateDecryptor(this.m_OriginalKey, this.WorkingIv);
 
-                mStream = new MemoryStream(data);
+                var scratch = new byte[Math.Max(ChunkSize, prefixLength)];
+                var input = new byte[ChunkSize];
+                var written = 0;
 
-                cStream = new CryptoStream(mStream, decryptor, CryptoStreamMode.Read);
+                if (prefixLength > 0)
+                {
+                    var produced = decryptor.TransformBlock(prefix, 0, prefixLength, scratch, 0);
+                    written += CopyResult(scratch, produced, destination, written, destinationLength);
+                }
 
-                var totalBuffer = new List<byte>();
-                var buffer = new byte[16];
-                int read;
-                // Read can return fewer than 16 bytes; append only the bytes actually read.
-                while ((read = cStream.Read(buffer, 0, 16)) > 0)
-                    totalBuffer.AddRange(buffer.AsSpan(0, read));
+                for (var offset = 0; offset < sourceLength && written < destinationLength; offset += ChunkSize)
+                {
+                    var count = Math.Min(ChunkSize, sourceLength - offset);
+                    source.Slice(offset, count).CopyTo(input);
 
-                return totalBuffer.ToArray();
+                    var produced = decryptor.TransformBlock(input, 0, count, scratch, 0);
+                    written += CopyResult(scratch, produced, destination, written, destinationLength);
+                }
+
+                return written == destinationLength;
             }
             catch (Exception)
             {
-                return null;
+                return false;
             }
             finally
             {
-                cStream?.Dispose();
-                mStream?.Dispose();
                 decryptor?.Dispose();
             }
+        }
+
+        private static int CopyResult(byte[] source, int produced, byte[] destination, int written, int destinationLength)
+        {
+            var copy = Math.Min(produced, destinationLength - written);
+            if (copy <= 0)
+                return 0;
+
+            Buffer.BlockCopy(source, 0, destination, written, copy);
+            return copy;
         }
     }
 }

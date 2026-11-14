@@ -27,29 +27,32 @@
 
 namespace Steamless.API.Model
 {
-    using CommunityToolkit.Mvvm.ComponentModel;
-
-    /// Steamless processing options. Properties are source-generated from fields
-    /// via CommunityToolkit.Mvvm [ObservableProperty] attribute.
-    public partial class SteamlessOptions : ObservableObject
+    /// <summary>
+    /// The switches a run uses. A run reads them once at the start and nothing observes later
+    /// changes, so a plain value object is enough.
+    /// </summary>
+    public class SteamlessOptions
     {
-        [ObservableProperty] private bool _verboseOutput;
-        [ObservableProperty] private bool _keepBindSection;
-        [ObservableProperty] private bool _dumpPayloadToDisk;
-        [ObservableProperty] private bool _dumpSteamDrmpToDisk;
-        [ObservableProperty] private bool _dontRealignSections;
-        [ObservableProperty] private bool _zeroDosStubData;
-        [ObservableProperty] private bool _recalculateFileChecksum;
+        public bool VerboseOutput { get; set; } = true;
 
-        public SteamlessOptions()
+        public bool KeepBindSection { get; set; }
+
+        public bool DumpPayloadToDisk { get; set; }
+
+        public bool DumpSteamDrmpToDisk { get; set; }
+
+        public bool DontRealignSections { get; set; } = true;
+
+        public bool ZeroDosStubData { get; set; } = true;
+
+        public bool RecalculateFileChecksum { get; set; }
+
+        /// <summary>
+        /// Copies the current values so a long run keeps the options it started with.
+        /// </summary>
+        public SteamlessOptions Snapshot()
         {
-            this.VerboseOutput = true;
-            this.KeepBindSection = false;
-            this.DumpPayloadToDisk = false;
-            this.DumpSteamDrmpToDisk = false;
-            this.DontRealignSections = true;
-            this.ZeroDosStubData = true;
-            this.RecalculateFileChecksum = false;
+            return (SteamlessOptions)this.MemberwiseClone();
         }
     }
 }

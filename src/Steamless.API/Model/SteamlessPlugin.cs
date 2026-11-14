@@ -27,18 +27,33 @@
 
 namespace Steamless.API.Model
 {
+    using Events;
+    using PE;
     using Services;
     using System;
+    using System.Collections.Generic;
 
+    /// <summary>
+    /// Base class for an unpacker. The host calls <see cref="Initialize"/> once, parses a file
+    /// once, then asks every plugin <see cref="CanProcessFile"/> and runs the one that claims it.
+    /// A session shares one plugin instance across files, so a run keeps its state on the stack,
+    /// not in fields here.
+    /// </summary>
     public abstract class SteamlessPlugin : IDisposable
     {
+        protected LoggingService LoggingService { get; private set; }
+
         public virtual string Author => "Steamless Development Team";
 
         public virtual string Name => "Steamless Plugin";
 
         public virtual string Description => "The Steamless base plugin class.";
 
-        public virtual Version Version => new Version(1, 0, 0, 0);
+        /// <summary>
+        /// The variants this plugin can unpack, one picker entry each. A plugin that covers more
+        /// than one layout lists them all here. Defaults to the plugin's own name.
+        /// </summary>
+        public virtual IReadOnlyList<string> Variants => new[] { this.Name };
 
         ~SteamlessPlugin()
         {
@@ -57,25 +72,41 @@ namespace Steamless.API.Model
 
         public virtual bool Initialize(LoggingService logService)
         {
-            return false;
+            this.LoggingService = logService;
+            return true;
         }
 
-        public virtual bool CanProcessFile(string file)
+        /// <summary>
+        /// Whether this plugin claims the image. The host has already parsed and validated it, so
+        /// a claim rule only has to recognise its own variant.
+        /// </summary>
+        public virtual bool CanProcessFile(PeImage file)
         {
             return false;
         }
 
-        public virtual bool ProcessFile(string file, SteamlessOptions options)
+        /// <summary>
+        /// The most specific variant this plugin recognises in an image it claimed. Detection
+        /// prints it, so a plugin covering several layouts can say which one the file uses. The
+        /// host calls this only after <see cref="CanProcessFile"/> returns true.
+        /// </summary>
+        public virtual string DetectVariant(PeImage file)
+        {
+            return this.Name;
+        }
+
+        /// <summary>
+        /// Unpacks the image the host parsed. Returns false when the file turns out not to be this
+        /// variant, or when a step failed and logged why.
+        /// </summary>
+        public virtual bool ProcessFile(PeImage file, SteamlessOptions options)
         {
             return false;
         }
 
-        // Sibling-aware entry point: passes the full plugin list so dispatch logic can consider other plugins.
-        public virtual bool ProcessFile(string file, SteamlessOptions options, System.Collections.Generic.IEnumerable<SteamlessPlugin> siblings)
+        protected void Log(string message, LogMessageType type)
         {
-            return this.ProcessFile(file, options);
+            this.LoggingService?.OnAddLogMessage(this, new LogMessageEventArgs(message, type));
         }
-
-        public string DisplayName => this.Name + " - " + this.Description;
     }
 }

@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <ProjectGuid>{56C95629-3B34-47FE-B988-04274409294F}</ProjectGuid>
     <OutputType>Library</OutputType>
@@ -6,8 +6,4 @@
     <AssemblyName>Steamless.API</AssemblyName>
     <Description>Steamless API Library</Description>
   </PropertyGroup>
-
-  <ItemGroup>
-    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
-  </ItemGroup>
 </Project>

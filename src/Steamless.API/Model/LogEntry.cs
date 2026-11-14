@@ -1,6 +1,4 @@
-﻿#nullable disable
-
-/**
+﻿/**
  * Steamless - Copyright (c) 2015 - 2024 atom0s [atom0s@live.com]
  *
  * This work is licensed under the Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License.
@@ -25,15 +23,36 @@
  * No warranties are given.
  */
 
-namespace Steamless.API.Extensions
+namespace Steamless.API.Model
 {
-    using System.IO;
+    using Events;
 
-    public static class FileStreamExtensions
+    /// <summary>
+    /// One accepted log line: the severity a renderer colours by, the source, and the message. The
+    /// feed decides which messages become entries.
+    /// </summary>
+    public sealed class LogEntry
     {
-        public static void WriteBytes(this FileStream fStream, byte[] data)
+        private readonly string m_Line;
+
+        public LogEntry(LogMessageType messageType, string source, string message)
         {
-            fStream.Write(data, 0, data.Length);
+            this.MessageType = messageType;
+            this.Source = source ?? string.Empty;
+            this.Message = message ?? string.Empty;
+
+            // An empty message is spacing, not a line with a dangling source prefix.
+            this.m_Line = this.Message.Length == 0 ? string.Empty : $"[{this.Source}] {this.Message}";
         }
+
+        public LogMessageType MessageType { get; }
+
+        /// <summary>The plugin that wrote the line, or the host's name for a host message.</summary>
+        public string Source { get; }
+
+        public string Message { get; }
+
+        /// <summary>The message with its source in front, ready to render.</summary>
+        public string Line => this.m_Line;
     }
 }
