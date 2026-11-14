@@ -5,8 +5,8 @@
     <RootNamespace>Steamless</RootNamespace>
     <AssemblyName>Steamless</AssemblyName>
     <ApplicationIcon>Assets\steam.ico</ApplicationIcon>
-    <AssemblyVersion>5.0.0</AssemblyVersion>
-    <FileVersion>5.0.0</FileVersion>
+    <AssemblyVersion>5.1.0</AssemblyVersion>
+    <FileVersion>5.1.0</FileVersion>
     <AssemblyTitle>Steamless-KR</AssemblyTitle>
     <Product>Steamless-KR</Product>
     <Description>Removes the SteamStub DRM protection from Steam applications.</Description>
