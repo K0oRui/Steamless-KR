@@ -34,7 +34,10 @@
     view, so the app stays IL while its dependencies are precompiled.
   -->
   <ItemGroup>
-    <PublishReadyToRunExclude Include="Steamless" />
+    <PublishReadyToRunExclude Include="Steamless.dll" />
+    <!-- Themes and UI shells are mostly resources. Precompiling their code bloats the
+         archive without helping the first window. -->
+    <PublishReadyToRunExclude Include="Avalonia.Themes.Fluent.dll;Avalonia.Themes.Simple.dll;ShadUI.dll;Avalonia.Controls.DataGrid.dll;Avalonia.Controls.ColorPicker.dll;Avalonia.Dialogs.dll;Avalonia.Vulkan.dll;Avalonia.OpenGL.dll;SkiaSharp.dll;HarfBuzzSharp.dll;CommunityToolkit.Mvvm.dll;Avalonia.Win32.Automation.dll" />
   </ItemGroup>
 
   <ItemGroup>
