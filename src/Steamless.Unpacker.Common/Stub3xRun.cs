@@ -25,14 +25,27 @@
  * No warranties are given.
  */
 
-namespace Steamless.Unpacker.Variant31.x64.Classes
+namespace Steamless.Unpacker.Common
 {
-    public enum SteamStubDrmFlags
+    /// <summary>
+    /// Run state for a 3.x unpack. Both variants read the same flow, so they differ only in the
+    /// header struct they project into <see cref="Stub3xHeader"/>.
+    /// </summary>
+    public class Stub3xRun : UnpackRun
     {
-        NoModuleVerification = 0x02,
-        NoEncryption = 0x04,
-        NoOwnershipCheck = 0x10,
-        NoDebuggerCheck = 0x20,
-        NoErrorDialog = 0x40
+        public Stub3xHeader Header { get; set; }
+
+        /// <summary>
+        /// RVA where the stub code starts, as the header search recorded it. The payload begins
+        /// <see cref="Stub3xHeader.BindSectionOffset"/> bytes before it. Zero when no header was
+        /// found, which sends the payload lookup back to the entry point.
+        /// </summary>
+        public ulong StubStartRva { get; set; }
+
+        /// <summary>Set when the header was found behind a TLS callback rather than the entry point.</summary>
+        public ulong TlsEntryPoint { get; set; }
+
+        /// <summary>The repaired entry point, or zero when the repair did not apply.</summary>
+        public uint TlsEntryPointOverride { get; set; }
     }
 }

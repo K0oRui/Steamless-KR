@@ -29,430 +29,123 @@ namespace Steamless.Unpacker.Variant20.x86
 {
     using API;
     using API.Events;
-    using API.Extensions;
     using API.Model;
-    using API.PE32;
-    using API.Services;
+    using API.PE;
     using Classes;
-    using Iced.Intel;
+    using Common;
     using System;
-    using System.Collections.Generic;
-    using System.IO;
-    using System.Linq;
-    using System.Reflection;
 
-    [SteamlessApiVersion(1, 0)]
-    public class Main : SteamlessPlugin
+    [SteamlessApiVersion(1, 2)]
+    public class Main : StubUnpacker<V20Run>
     {
-        private LoggingService m_LoggingService;
+        private const string StubPrologue = "53 51 52 56 57 55 8B EC 81 EC 00 10 00 00 BE";
 
-        public override string Author => "atom0s";
+        private const uint HeaderMagic = 0xC0DEC0DE;
+
+        protected override string VariantName => "SteamStub Variant 2.0";
 
         public override string Name => "SteamStub Variant 2.0 Unpacker (x86)";
 
-        public override string Description => "Unpacker for the 32bit SteamStub variant 2.0.";
+        public override string Description => "Unpacks 32-bit SteamStub variant 2.0.";
 
-        public override Version Version => Assembly.GetExecutingAssembly().GetName().Version;
+        protected override string BindPrologue => StubPrologue;
 
-        private void Log(string msg, LogMessageType type)
+        protected override bool ReadHeader(V20Run run)
         {
-            this.m_LoggingService.OnAddLogMessage(this, new LogMessageEventArgs(msg, type));
-        }
+            this.Step(run, "Disassemble and decode the SteamStub header.");
 
-        public override bool Initialize(LoggingService logService)
-        {
-            this.m_LoggingService = logService;
-            return true;
-        }
-
-        public override bool CanProcessFile(string file)
-        {
-            try
-            {
-                var f = new Pe32File(file);
-                if (!f.Parse() || f.IsFile64Bit() || !f.HasSection(".bind"))
-                    return false;
-
-                var bind = f.GetSectionData(".bind");
-
-                // Signature of the SteamStub v2.0 unpacker prologue.
-                return Pe32Helpers.FindPattern(bind, "53 51 52 56 57 55 8B EC 81 EC 00 10 00 00 BE") != -1;
-            }
-            catch (Exception)
-            {
-                return false;
-            }
-        }
-
-        public override bool ProcessFile(string file, SteamlessOptions options)
-        {
-            this.Options = options;
-            this.CodeSectionData = null;
-            this.CodeSectionIndex = -1;
-            this.XorKey = 0;
-
-            this.File = new Pe32File(file);
-            if (!this.File.Parse())
+            // The stub header magic marks the start of the DRM header before the entry point.
+            if (!HasHeaderMagic(run.File, HeaderMagic))
                 return false;
 
-            this.Log("File is packed with SteamStub Variant 2.0!", LogMessageType.Information);
-
-            this.Log("Step 1 - Read, disassemble and decode the SteamStub DRM header.", LogMessageType.Information);
-            if (!this.Step1())
+            if (!StubDisassembler.TryFindV20Header(run.File, out var headerOffset, out var headerSize))
                 return false;
 
-            this.Log("Step 2 - Read, decrypt and process the main code section.", LogMessageType.Information);
-            if (!this.Step2())
+            if (!TryReadHeaderWindow(run.File, headerOffset, headerSize, out var headerData))
                 return false;
 
-            this.Log("Step 3 - Prepare the file sections.", LogMessageType.Information);
-            if (!this.Step3())
-                return false;
+            run.XorKey = StubCrypto.Xor(ref headerData, (uint)headerData.Length);
 
-            this.Log("Step 4 - Rebuild and save the unpacked file.", LogMessageType.Information);
-            if (!this.Step4())
-                return false;
-
-            if (this.Options.RecalculateFileChecksum)
-            {
-                this.Log("Step 5 - Rebuild unpacked file checksum.", LogMessageType.Information);
-                if (!this.Step5())
-                    return false;
-            }
-
-            return true;
-        }
-
-        private bool Step1()
-        {
-            var fileOffset = this.File.GetFileOffsetFromRva(this.File.NtHeaders.OptionalHeader.AddressOfEntryPoint);
-
-            // Stub header magic; marks the start of the DRM header preceding the entry point.
-            if (fileOffset < 4 || BitConverter.ToUInt32(this.File.FileData, (int)fileOffset - 4) != 0xC0DEC0DE)
-                return false;
-
-            if (!this.DisassembleFile(out var structOffset, out var structSize, out var structXorKey))
-                return false;
-
-            var headerData = new byte[structSize];
-            Array.Copy(this.File.FileData, this.File.GetFileOffsetFromRva(structOffset), headerData, 0, structSize);
-
-            this.XorKey = SteamStubHelpers.SteamXor(ref headerData, (uint)headerData.Length, 0);
-
-            switch (structSize)
+            switch (headerSize)
             {
                 case 856:
-                    this.StubHeader = Pe32Helpers.GetStructure<SteamStub32Var20_856_Header>(headerData);
+                    run.Header = PeHelpers.GetStructure<SteamStub32Var20_856_Header>(headerData);
                     break;
                 case 884:
-                    this.StubHeader = Pe32Helpers.GetStructure<SteamStub32Var20_884_Header>(headerData);
+                    run.Header = PeHelpers.GetStructure<SteamStub32Var20_884_Header>(headerData);
                     break;
                 case 952:
-                    this.StubHeader = Pe32Helpers.GetStructure<SteamStub32Var20_952_Header>(headerData);
+                    run.Header = PeHelpers.GetStructure<SteamStub32Var20_952_Header>(headerData);
                     break;
                 default:
-                    {
-                        this.Log("", LogMessageType.Error);
-                        this.Log($"Invalid/unknown variant header size: {structSize}", LogMessageType.Error);
-                        this.Log("Please report this issue on Steamless' GitHub issue tracker!", LogMessageType.Error);
-                        this.Log("Be sure to include a copy of this games .exe file you are trying to unpack!", LogMessageType.Error);
-                        this.Log("", LogMessageType.Error);
-                        return false;
-                    }
-            }
-
-            return true;
-        }
-
-        private bool Step2()
-        {
-            /**
-             * TODO:
-             * 
-             * Should we add custom checks here that mimic the validations of the stub based on the header flags?
-             * 
-             *      0x01 - Hash check validation of the .bind code and stub header.
-             *      0x02 - WinTrustVerify validation of the file.
-             *      
-             * These would just be for warnings to let users know if the file was broken/tampered, but unpacking should
-             * still complete if it can.
-             */
-
-            var codeSectionRVA = this.File.NtHeaders.OptionalHeader.BaseOfCode;
-            var codeSection = this.File.GetOwnerSection(codeSectionRVA);
-
-            // Some variants of this version report a wrong BaseOfCode. Only fall back to the
-            // stub header's code section address when the default does not map to a valid
-            // section, so variants with a working BaseOfCode are never affected.
-            if (codeSection.PointerToRawData == 0 || codeSection.SizeOfRawData == 0)
-            {
-                if (this.StubHeader.CodeSectionVirtualAddress != 0)
-                {
-                    var stubSectionRVA = this.File.GetRvaFromVa(this.StubHeader.CodeSectionVirtualAddress);
-                    var stubSection = this.File.GetOwnerSection(stubSectionRVA);
-                    if (stubSection.PointerToRawData != 0 && stubSection.SizeOfRawData != 0)
-                        codeSectionRVA = stubSectionRVA;
-                }
-            }
-
-            codeSection = this.File.GetOwnerSection(codeSectionRVA);
-            if (codeSection.PointerToRawData == 0 || codeSection.SizeOfRawData == 0)
-                return false;
-
-            this.CodeSectionIndex = this.File.GetSectionIndex(codeSection);
-
-            var codeSectionData = new byte[codeSection.SizeOfRawData];
-            Array.Copy(this.File.FileData, this.File.GetFileOffsetFromRva(codeSection.VirtualAddress), codeSectionData, 0, codeSection.SizeOfRawData);
-
-            if ((this.StubHeader.Flags & (uint)DrmFlags.UseEncodedCodeSection) == 0)
-                return true;
-
-            // Rolling XOR cipher: the key is replaced by the previous plaintext word for the next block.
-            var key = this.StubHeader.CodeSectionXorKey;
-            var offset = 0;
-            for (var x = this.StubHeader.CodeSectionSize >> 2; x > 0; --x)
-            {
-                var val1 = BitConverter.ToUInt32(codeSectionData, offset);
-                var val2 = val1 ^ key;
-                key = val1;
-
-                Array.Copy(BitConverter.GetBytes(val2), 0, codeSectionData, offset, 4);
-
-                offset += 4;
-            }
-
-            this.CodeSectionData = codeSectionData;
-
-            return true;
-        }
-        private bool Step3()
-        {
-            // Stash the .bind bounds first; they are needed later to repair pointers into the removed section.
-            {
-                var bindSection = this.File.GetSection(".bind");
-                if (bindSection.IsValid)
-                {
-                    this.BindSectionRva = bindSection.VirtualAddress;
-                    this.BindSectionSize = bindSection.VirtualSize;
-                }
-            }
-
-            if (!this.Options.KeepBindSection)
-            {
-                var bindSection = this.File.GetSection(".bind");
-                if (!bindSection.IsValid)
+                    this.Log("", LogMessageType.Error);
+                    this.Log($"Unrecognized variant header size: {headerSize}", LogMessageType.Error);
+                    this.Log("Report this at https://github.com/K0oRui/Steamless-KR/issues", LogMessageType.Error);
+                    this.Log("Include the .exe you tried to unpack.", LogMessageType.Error);
+                    this.Log("", LogMessageType.Error);
                     return false;
-
-                this.File.RemoveSection(bindSection);
-
-                var ntHeaders = this.File.NtHeaders;
-                ntHeaders.FileHeader.NumberOfSections--;
-                this.File.NtHeaders = ntHeaders;
-
-                this.Log(" --> .bind section was removed from the file.", LogMessageType.Debug);
             }
-            else
-                this.Log(" --> .bind section was kept in the file.", LogMessageType.Debug);
-
-            try
-            {
-                this.File.RebuildSections(this.Options.DontRealignSections == false);
-            }
-            catch (Exception)
-            {
-                return false;
-            }
-
 
             return true;
         }
 
-        private bool Step4()
+        protected override bool Unpack(V20Run run, SteamlessOptions options)
         {
-            FileStream fStream = null;
+            this.Step(run, "Decrypt the main code section.");
+            if (!this.TryDecodeCodeSection(run))
+                return false;
 
-            try
+            this.Step(run, "Remove the .bind section.");
+            return run.Bind.Remove(run.File, options, this.LoggingService);
+        }
+
+        protected override uint GetEntryPoint(V20Run run) => (uint)run.File.RvaFromVa(run.Header.OEP);
+
+        private bool TryDecodeCodeSection(V20Run run)
+        {
+            var codeSectionRva = (ulong)run.File.BaseOfCode;
+            var codeSection = run.File.FindSectionAtRva(codeSectionRva);
+
+            // Some variants report a wrong BaseOfCode. Fall back to the stub header's code section
+            // address only when the default does not map to a valid section, so working variants
+            // are unaffected.
+            if (codeSection == null || !codeSection.IsValid)
             {
-                if (this.Options.ZeroDosStubData && this.File.DosStubSize > 0)
-                    this.File.DosStubData = Enumerable.Repeat((byte)0, (int)this.File.DosStubSize).ToArray();
-
-                var unpackedPath = this.File.FilePath + ".unpacked.exe";
-                fStream = new FileStream(unpackedPath, FileMode.Create, FileAccess.ReadWrite);
-
-                fStream.WriteBytes(Pe32Helpers.GetStructureBytes(this.File.DosHeader));
-
-                if (this.File.DosStubSize > 0)
-                    fStream.WriteBytes(this.File.DosStubData);
-
-                var ntHeaders = this.File.NtHeaders;
-                var lastSection = this.File.Sections[this.File.Sections.Count - 1];
-                ntHeaders.OptionalHeader.AddressOfEntryPoint = this.File.GetRvaFromVa(this.StubHeader.OEP);
-                ntHeaders.OptionalHeader.CheckSum = 0;
-                ntHeaders.OptionalHeader.SizeOfImage = this.File.GetAlignment(lastSection.VirtualAddress + lastSection.VirtualSize, this.File.NtHeaders.OptionalHeader.SectionAlignment);
-
-                // If the import table lived in the removed .bind section, repoint it to the real descriptor in .rdata.
-                if (!this.Options.KeepBindSection && this.BindSectionSize > 0)
+                if (run.Header.CodeSectionVirtualAddress != 0)
                 {
-                    var importTable = ntHeaders.OptionalHeader.ImportTable;
-                    if (importTable.VirtualAddress >= this.BindSectionRva && importTable.VirtualAddress < this.BindSectionRva + this.BindSectionSize)
-                    {
-                        var rdataSection = this.File.GetSection(".rdata");
-                        if (rdataSection.IsValid)
-                        {
-                            var rdataData = this.File.GetSectionData(".rdata");
-                            var importRva = Pe32Helpers.FindImportDescriptorInRdata(rdataData, rdataSection.VirtualAddress);
-                            if (importRva > 0)
-                            {
-                                importTable.VirtualAddress = importRva;
-                                ntHeaders.OptionalHeader.ImportTable = importTable;
-                                this.Log($" --> Fixed import table pointer to RVA 0x{importRva:X8}", LogMessageType.Debug);
-                            }
-                        }
-                    }
+                    var stubSectionRva = run.File.RvaFromVa(run.Header.CodeSectionVirtualAddress);
+                    var stubSection = run.File.FindSectionAtRva(stubSectionRva);
+                    if (stubSection != null && stubSection.IsValid)
+                        codeSectionRva = stubSectionRva;
                 }
+            }
 
-                // Repoint the certificate table to the new overlay start; its offset shifts when .bind is removed.
-                if (!this.Options.KeepBindSection && this.BindSectionSize > 0)
-                {
-                    var certTable = ntHeaders.OptionalHeader.CertificateTable;
-                    if (certTable.VirtualAddress > 0 && certTable.Size > 0)
-                    {
-                        var lastSectionRaw = this.File.Sections[this.File.Sections.Count - 1];
-                        var overlayStart = lastSectionRaw.PointerToRawData + lastSectionRaw.SizeOfRawData;
-                        certTable.VirtualAddress = overlayStart;
-                        ntHeaders.OptionalHeader.CertificateTable = certTable;
-                        this.Log($" --> Fixed certificate table pointer to file offset 0x{overlayStart:X8}", LogMessageType.Debug);
-                    }
-                }
+            codeSection = run.File.FindSectionAtRva(codeSectionRva);
+            if (codeSection == null || !codeSection.IsValid)
+                return false;
 
-                this.File.NtHeaders = ntHeaders;
-
-                fStream.WriteBytes(Pe32Helpers.GetStructureBytes(ntHeaders));
-
-                for (var x = 0; x < this.File.Sections.Count; x++)
-                {
-                    var section = this.File.Sections[x];
-                    var sectionData = this.File.SectionData[x];
-
-                    fStream.WriteBytes(Pe32Helpers.GetStructureBytes(section));
-
-                    var sectionOffset = fStream.Position;
-                    fStream.Position = section.PointerToRawData;
-
-                    var sectionIndex = this.File.Sections.IndexOf(section);
-                    if (sectionIndex == this.CodeSectionIndex)
-                        fStream.WriteBytes(this.CodeSectionData ?? sectionData);
-                    else
-                        fStream.WriteBytes(sectionData);
-
-                    fStream.Position = sectionOffset;
-                }
-
-                fStream.Position = fStream.Length;
-
-                if (this.File.OverlayData != null)
-                    fStream.WriteBytes(this.File.OverlayData);
-
-                this.Log(" --> Unpacked file saved to disk!", LogMessageType.Success);
-                this.Log($" --> File Saved As: {unpackedPath}", LogMessageType.Success);
-
+            if (!StubDrmFlags.EncryptsCodeSectionV20(run.Header.Flags))
                 return true;
-            }
-            catch (Exception)
-            {
-                this.Log(" --> Error trying to save unpacked file!", LogMessageType.Error);
-                return false;
-            }
-            finally
-            {
-                fStream?.Dispose();
-            }
-        }
 
-        private bool Step5()
-        {
-            var unpackedPath = this.File.FilePath + ".unpacked.exe";
-            if (!Pe32Helpers.UpdateFileChecksum(unpackedPath))
-            {
-                this.Log(" --> Error trying to recalculate unpacked file checksum!", LogMessageType.Error);
-                return false;
-            }
+            var codeSectionData = run.File.ReadSection(codeSection);
 
-            this.Log(" --> Unpacked file updated with new checksum!", LogMessageType.Success);
+            // Rolling XOR: the declared size can exceed the real section, so cap the walk.
+            var key = run.Header.CodeSectionXorKey;
+            var blockCount = Math.Min(run.Header.CodeSectionSize >> 2, codeSection.SizeOfRawData >> 2);
+
+            StubCrypto.Xor(ref codeSectionData, blockCount * 4, key);
+
+            run.File.ReplaceSection(codeSection, codeSectionData);
             return true;
-
         }
+    }
 
-        private bool DisassembleFile(out uint offset, out uint size, out uint xorKey)
-        {
-            uint structOffset = 0;
-            uint structSize = 0;
-            uint structXorKey = 0;
-
-            var entryOffset = this.File.GetFileOffsetFromRva(this.File.NtHeaders.OptionalHeader.AddressOfEntryPoint);
-
-            try
-            {
-                var reader = new ByteArrayCodeReader(this.File.FileData, (int)entryOffset, Math.Min(4096, this.File.FileData.Length - (int)entryOffset));
-                var decoder = Decoder.Create(32, reader);
-                decoder.IP = (ulong)entryOffset;
-                var endRip = decoder.IP + 4096;
-
-                while (decoder.IP < endRip && reader.CanReadByte)
-                {
-                    var inst = decoder.Decode();
-
-                    // Looks for: mov reg, immediate
-                    if (inst.Mnemonic == Mnemonic.Mov && inst.Op0Kind == OpKind.Register && IsImmediate32(inst.Op1Kind))
-                    {
-                        if (structOffset == 0)
-                        {
-                            structOffset = inst.Immediate32 - this.File.NtHeaders.OptionalHeader.ImageBase;
-                        }
-                        else if (structSize == 0)
-                        {
-                            structSize = inst.Immediate32 * 4;
-                            structXorKey = 1;
-                        }
-                    }
-
-                    if (structOffset > 0 && structSize > 0 && structXorKey > 0)
-                    {
-                        offset = structOffset;
-                        size = structSize;
-                        xorKey = structXorKey;
-                        return true;
-                    }
-                }
-
-                offset = size = xorKey = 0;
-                return false;
-            }
-            catch (Exception)
-            {
-                offset = size = xorKey = 0;
-                return false;
-            }
-        }
-
-        private static bool IsImmediate32(OpKind kind) =>
-            kind == OpKind.Immediate32 || kind == OpKind.Immediate8to32;
-
-        private SteamlessOptions Options { get; set; }
-
-        private Pe32File File { get; set; }
-
-        private uint XorKey { get; set; }
-
-        private ISteamStub32Var20Header StubHeader { get; set; }
-
-
-        private int CodeSectionIndex { get; set; }
-
-        private byte[] CodeSectionData { get; set; }
-
-        private uint BindSectionRva { get; set; }
-
-        private uint BindSectionSize { get; set; }
+    /// <summary>
+    /// Run state for a 2.0 unpack. The header size decides which of the three structs it is, so the
+    /// interface holds them.
+    /// </summary>
+    public sealed class V20Run : UnpackRun
+    {
+        public ISteamStub32Var20Header Header { get; set; }
     }
 }

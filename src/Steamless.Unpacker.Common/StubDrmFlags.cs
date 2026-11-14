@@ -25,36 +25,39 @@
  * No warranties are given.
  */
 
-namespace Steamless.Unpacker.Variant20.x86.Classes
+namespace Steamless.Unpacker.Common
 {
-    public enum DrmFlags
+    /// <summary>
+    /// The protection flags a SteamStub header records. Only the code-section bit changes what an
+    /// unpacker does, and the two header generations read it in opposite senses: a 2.0 header sets
+    /// it when the section is encrypted, while a 2.1 or 3.x header calls the same bit "no
+    /// encryption" and clears it when encrypted. Both readings live here, so a caller names its
+    /// generation.
+    ///
+    /// The rest of the word describes checks the stub performs: module verification, ownership,
+    /// debugger and error dialog. None of them change what has to be removed.
+    /// </summary>
+    public static class StubDrmFlags
     {
-        None = 0x00,
+        /// <summary>The bit both generations use for the code section's encryption.</summary>
+        private const uint CodeSection = 0x04;
 
         /// <summary>
-        /// The stub will hash check the stub code and header data.
+        /// Whether a 2.0 header says the stub encrypted the code section. That header sets the bit
+        /// to mean encrypted.
         /// </summary>
-        UseValidation = 0x01,
+        public static bool EncryptsCodeSectionV20(uint flags)
+        {
+            return (flags & StubDrmFlags.CodeSection) != 0;
+        }
 
         /// <summary>
-        /// The stub will validate the file via WinVerifyTrust if able.
+        /// Whether a 2.1 or 3.x header says the stub encrypted the code section. Those headers call
+        /// the bit "no encryption", so a clear bit means encrypted.
         /// </summary>
-        UseWinVerifyTrustValidation = 0x02,
-
-        /// <summary>
-        /// The stub will decode/decrypt the code section.
-        /// </summary>
-        UseEncodedCodeSection = 0x04,
-
-        /// <summary>
-        /// The stub checks the active thread count during processing to detect injected threads. (If the count is not 1, the check fails.)
-        /// </summary>
-        UseThreadCheckValidation = 0x08,
-
-        /// <summary>
-        /// The stub checks data against a mapped memory view of the modded startup information.
-        /// This uses the SteamAppID and Unknown0000 of the header.
-        /// </summary>
-        UseMemoryMappedValidation = 0x10
+        public static bool EncryptsCodeSectionV21(uint flags)
+        {
+            return (flags & StubDrmFlags.CodeSection) == 0;
+        }
     }
 }

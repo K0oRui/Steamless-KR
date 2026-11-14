@@ -25,28 +25,33 @@
  * No warranties are given.
  */
 
-namespace Steamless.Unpacker.Variant30.x86.Classes
+namespace Steamless.Unpacker.Variant3x.Classes
 {
+    using Common;
     using System.Runtime.InteropServices;
 
+    /// <summary>
+    /// The SteamStub 3.x header. The 32-bit and 64-bit stubs lay this struct out identically, so
+    /// one type covers both; only the declared header size differs (0xB0 or 0xD0).
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    public struct SteamStub32Var30Header
+    public struct SteamStubVar30Header
     {
         public uint XorKey;
         public uint Signature; // 0xC0DEC0DE signature to validate this header is proper.
         public ulong ImageBase;
         public uint AddressOfEntryPoint;
         public uint BindSectionOffset; // Offset relative to AddressOfEntryPoint, e.g. RVA(AddressOfEntryPoint - BindSectionOffset).
-        public uint Unknown0000; // [Cyanic: This field is most likely the .bind code size.]
+        public uint Unknown0000; // [Cyanic] Likely the .bind code size.
         public uint OriginalEntryPoint;
-        public uint Unknown0001; // [Cyanic: This field is most likely an offset to a string table.]
+        public uint Unknown0001; // [Cyanic] Likely an offset to a string table.
         public uint PayloadSize;
         public uint DRMPDllOffset;
         public uint DRMPDllSize;
         public uint SteamAppId;
         public uint Flags;
         public uint BindSectionVirtualSize;
-        public uint Unknown0002; // [Cyanic: This field is most likely a hash of some sort.]
+        public uint Unknown0002; // [Cyanic] Likely a hash of some sort.
         public uint CodeSectionVirtualAddress;
         public uint CodeSectionRawSize;
 
@@ -62,7 +67,7 @@ namespace Steamless.Unpacker.Variant30.x86.Classes
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 0x04)]
         public uint[] EncryptionKeys; // XTEA keys used for decrypting the SteamDRMP.dll file.
 
-        public uint Unknown0003; // [Cyanic: This field is most likely used to flag if the file has Tls data or not.]
+        public uint HasTlsCallback; // Set when the file was protected with a TLS callback.
         public uint Unknown0004;
         public uint Unknown0005;
         public uint Unknown0006;
@@ -76,5 +81,30 @@ namespace Steamless.Unpacker.Variant30.x86.Classes
         public uint Unknown0009;
         public uint Unknown0010;
         public uint Unknown0011;
+
+        /// <summary>
+        /// Projects this layout into the width-independent shape the shared 3.x steps read.
+        /// </summary>
+        public Stub3xHeader ToStub3xHeader()
+        {
+            return new Stub3xHeader
+            {
+                Signature = this.Signature,
+                Flags = this.Flags,
+                OriginalEntryPoint = this.OriginalEntryPoint,
+                BindSectionOffset = this.BindSectionOffset,
+                PayloadSize = this.PayloadSize,
+                DRMPDllOffset = this.DRMPDllOffset,
+                DRMPDllSize = this.DRMPDllSize,
+                XorKey = this.XorKey,
+                CodeSectionVirtualAddress = this.CodeSectionVirtualAddress,
+                CodeSectionRawSize = this.CodeSectionRawSize,
+                AES_Key = this.AES_Key,
+                AES_IV = this.AES_IV,
+                CodeSectionStolenData = this.CodeSectionStolenData,
+                EncryptionKeys = this.EncryptionKeys,
+                HasTlsCallback = this.HasTlsCallback,
+            };
+        }
     }
 }

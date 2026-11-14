@@ -25,14 +25,34 @@
  * No warranties are given.
  */
 
-namespace Steamless.Unpacker.Variant31.x86.Classes
+namespace Steamless.Unpacker.Common
 {
-    public enum SteamStubDrmFlags
+    using API.PE;
+
+    /// <summary>
+    /// State for one unpack. A session shares one plugin instance, so a run's data lives here
+    /// instead of on the plugin. A variant subclasses this to add its header and any intermediate
+    /// data its steps produce.
+    /// </summary>
+    public class UnpackRun
     {
-        NoModuleVerification = 0x02,
-        NoEncryption = 0x04,
-        NoOwnershipCheck = 0x10,
-        NoDebuggerCheck = 0x20,
-        NoErrorDialog = 0x40
+        public PeImage File { get; set; }
+
+        public BindSection Bind { get; set; }
+
+        /// <summary>The entry point to write, which each variant decides differently.</summary>
+        public uint EntryPoint { get; set; }
+
+        /// <summary>
+        /// The key the header decode passed on. The rolling XOR uses the last word it read as the
+        /// next key, so this is the cipher's continuation state, not just a value.
+        /// </summary>
+        public uint XorKey { get; set; }
+
+        /// <summary>
+        /// Counts the steps this run has logged, so a variant can add a step without renumbering
+        /// the ones the template owns.
+        /// </summary>
+        public int Step { get; set; }
     }
 }

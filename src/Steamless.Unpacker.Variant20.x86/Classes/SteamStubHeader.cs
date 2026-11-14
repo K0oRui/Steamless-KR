@@ -39,15 +39,15 @@ namespace Steamless.Unpacker.Variant20.x86.Classes
         public uint GetModuleHandleA_idata;
         public uint GetProcAddress_idata;
         public uint GetModuleHandleW_idata;
-        public uint Flags;                     // Protection flags used with the file (see DrmFlags).
-        public uint Unknown0000;               // Used as part of a hash check when (Flags & 0x10) is set.
+        public uint Flags;                     // Protection flags, see StubDrmFlags.
+        public uint Unknown0000;               // Part of a hash check when (Flags & 0x10) is set.
         public uint BindSectionVirtualAddress;
         public uint BindSectionCodeSize;
-        public uint BindSectionHash;           // Hash of the .bind code and stub header data. (Only used if (Flags & 1) is set.)
+        public uint BindSectionHash;           // Hash of the .bind code and header. Used only when Flags & 1 is set.
         public uint OEP;
         public uint CodeSectionVirtualAddress;
         public uint CodeSectionSize;
-        public uint CodeSectionXorKey;         // Starting key to xor decode against. (Only used if (Flags & 4) is set.)
+        public uint CodeSectionXorKey;         // Starting XOR key. Used only when Flags & 4 is set.
         public uint SteamAppId;
 
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 0x08)]
@@ -73,15 +73,15 @@ namespace Steamless.Unpacker.Variant20.x86.Classes
         public uint GetProcAddress_idata;
         public uint LoadLibraryA_idata;
         public uint GetProcAddress_custom;
-        public uint Flags;                     // Protection flags used with the file (see DrmFlags).
-        public uint Unknown0000;               // Used as part of a hash check when (Flags & 0x10) is set.
+        public uint Flags;                     // Protection flags, see StubDrmFlags.
+        public uint Unknown0000;               // Part of a hash check when (Flags & 0x10) is set.
         public uint BindSectionVirtualAddress;
         public uint BindSectionCodeSize;
-        public uint BindSectionHash;           // Hash of the .bind code and stub header data. (Only used if (Flags & 1) is set.)
+        public uint BindSectionHash;           // Hash of the .bind code and header. Used only when Flags & 1 is set.
         public uint OEP;
         public uint CodeSectionVirtualAddress;
         public uint CodeSectionSize;
-        public uint CodeSectionXorKey;         // Starting key to xor decode against. (Only used if (Flags & 4) is set.)
+        public uint CodeSectionXorKey;         // Starting XOR key. Used only when Flags & 4 is set.
         public uint SteamAppId;
 
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 0x08)]
@@ -107,15 +107,15 @@ namespace Steamless.Unpacker.Variant20.x86.Classes
         public uint GetProcAddress_idata;
         public uint GetModuleHandleW_idata;
         public uint GetProcAddress_bind;
-        public uint Flags;                      // Protection flags used with the file (see DrmFlags).
-        public uint Unknown0000;                // Used as part of a hash check when (Flags & 0x10) is set.
+        public uint Flags;                      // Protection flags, see StubDrmFlags.
+        public uint Unknown0000;                // Part of a hash check when (Flags & 0x10) is set.
         public uint BindSectionVirtualAddress;
         public uint BindSectionCodeSize;
-        public uint BindSectionHash;            // Hash of the .bind code and stub header data. (Only used if (Flags & 1) is set.)
+        public uint BindSectionHash;            // Hash of the .bind code and header. Used only when Flags & 1 is set.
         public uint OEP;
-        public uint CodeSectionVirtualAddress;  // Was 0x0401000 when testing. Possibly original OEP?
+        public uint CodeSectionVirtualAddress;  // Possibly the original entry point.
         public uint CodeSectionSize;
-        public uint CodeSectionXorKey;          // Starting key to xor decode against. (Only used if (Flags & 4) is set.)
+        public uint CodeSectionXorKey;          // Starting XOR key. Used only when Flags & 4 is set.
         public uint SteamAppID;
 
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 0x0C)]

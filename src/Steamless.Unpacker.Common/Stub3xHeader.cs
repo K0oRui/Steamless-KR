@@ -25,37 +25,46 @@
  * No warranties are given.
  */
 
-namespace Steamless.Unpacker.Variant20.x86.Classes
+namespace Steamless.Unpacker.Common
 {
-    using System;
-
-    public static class SteamStubHelpers
+    /// <summary>
+    /// The 3.x header fields the shared steps read. The 3.0 and 3.1 structs differ in field width
+    /// and in two fields, so each plugin projects its own struct into this shape.
+    /// </summary>
+    public struct Stub3xHeader
     {
+        public uint Signature;
+
+        public uint Flags;
+
+        public ulong OriginalEntryPoint;
+
+        public uint BindSectionOffset;
+
+        public uint PayloadSize;
+
+        public uint DRMPDllOffset;
+
+        public uint DRMPDllSize;
+
+        public uint XorKey;
+
+        public ulong CodeSectionVirtualAddress;
+
+        public ulong CodeSectionRawSize;
+
+        public byte[] AES_Key;
+
+        public byte[] AES_IV;
+
+        public byte[] CodeSectionStolenData;
+
+        public uint[] EncryptionKeys;
+
         /// <summary>
-        /// Xor decrypts the given data using a rolling key; the key is replaced by the
-        /// previous plaintext word for the next block.
-        /// 
-        /// @note If no key is given (0), the first key is read from the first 4 bytes of the data.
+        /// Non-zero when the file was protected with a TLS callback. The 3.0 header carries this
+        /// flag; the 3.1 header has none and always repairs.
         /// </summary>
-        public static uint SteamXor(ref byte[] data, uint size, uint key = 0)
-        {
-            uint offset = 0;
-
-            if (key == 0)
-            {
-                offset += 4;
-                key = BitConverter.ToUInt32(data, 0);
-            }
-
-            for (var x = offset; x < size; x += 4)
-            {
-                var val = BitConverter.ToUInt32(data, (int)x);
-                Array.Copy(BitConverter.GetBytes(val ^ key), 0, data, x, 4);
-
-                key = val;
-            }
-
-            return key;
-        }
+        public uint HasTlsCallback;
     }
 }

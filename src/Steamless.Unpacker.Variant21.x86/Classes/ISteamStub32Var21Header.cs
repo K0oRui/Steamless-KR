@@ -28,7 +28,7 @@
 namespace Steamless.Unpacker.Variant21.x86.Classes
 {
     /// <summary>
-    /// Common properties shared by all SteamStub 32-bit Variant 2.1 header sizes (standard and D0 variant).
+    /// Common properties shared by both 2.1 header sizes, standard and D0.
     /// </summary>
     public interface ISteamStub32Var21Header
     {

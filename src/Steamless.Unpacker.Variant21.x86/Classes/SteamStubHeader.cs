@@ -30,16 +30,14 @@ namespace Steamless.Unpacker.Variant21.x86.Classes
     using System.Runtime.InteropServices;
 
     /// <summary>
-    /// SteamStub DRM Variant 2.1 Header (Standard)
-    ///
-    /// This is the standard variant which includes the LoadLibraryW field.
-    /// The D0 variant (SteamStub32Var21Header_D0Variant) omits LoadLibraryW,
-    /// making it 4 bytes smaller. Selected when (structSize / 4) != 0xD0.
+    /// The standard 2.1 header, which includes the LoadLibraryW field. The D0 variant drops that
+    /// field, making it 4 bytes smaller, and is selected when (structSize / 4) == 0xD0.
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     public struct SteamStub32Var21Header : ISteamStub32Var21Header
     {
-        // Import addresses used by the stub; each is zero when the stub does not import that API.
+        // XorKey starts the block. The Get*/LoadLibrary* fields below it are import addresses,
+        // zero when the stub does not import that API.
         public uint XorKey;
         public uint GetModuleHandleA;
         public uint GetModuleHandleW;
@@ -52,7 +50,7 @@ namespace Steamless.Unpacker.Variant21.x86.Classes
         public uint PayloadDataVirtualAddress;
         public uint PayloadDataSize;
         public uint SteamAppID;
-        public uint Unknown0001; // Unknown
+        public uint Unknown0001;
 
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 0x08)]
         public byte[] SteamAppIDString;
@@ -62,8 +60,8 @@ namespace Steamless.Unpacker.Variant21.x86.Classes
         public uint SteamDRMPDllSize;
         public uint XTeaKeys; // Offset into the payload data where the XTEA key array begins.
 
-        // The 'StubData' field is dynamically sized based on the stub version and used options, so it
-        // cannot be marshalled with a fixed size; the caller slices the remainder of the header instead.
+        // StubData has no fixed size: it depends on the stub version and the options used, so the
+        // caller slices the rest of the header instead of marshalling it.
 
         uint ISteamStub32Var21Header.PayloadDataVirtualAddress => PayloadDataVirtualAddress;
         uint ISteamStub32Var21Header.PayloadDataSize => PayloadDataSize;
@@ -73,15 +71,14 @@ namespace Steamless.Unpacker.Variant21.x86.Classes
     }
 
     /// <summary>
-    /// SteamStub DRM Variant 2.1 Header (Header Size: 0xD0 Variant)
-    ///
-    /// Identical to SteamStub32Var21Header except it omits the LoadLibraryW
-    /// field (4 bytes smaller). Selected when (structSize / 4) == 0xD0.
+    /// The 2.1 header without the LoadLibraryW field, 4 bytes smaller than the standard one.
+    /// Selected when (structSize / 4) == 0xD0.
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     public struct SteamStub32Var21Header_D0Variant : ISteamStub32Var21Header
     {
-        // Import addresses used by the stub; each is zero when the stub does not import that API.
+        // XorKey starts the block. The Get*/LoadLibrary* fields below it are import addresses,
+        // zero when the stub does not import that API.
         public uint XorKey;
         public uint GetModuleHandleA;
         public uint GetModuleHandleW;
@@ -93,7 +90,7 @@ namespace Steamless.Unpacker.Variant21.x86.Classes
         public uint PayloadDataVirtualAddress;
         public uint PayloadDataSize;
         public uint SteamAppID;
-        public uint Unknown0000; // Unknown
+        public uint Unknown0000;
 
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 0x08)]
         public byte[] SteamAppIDString;
@@ -103,8 +100,8 @@ namespace Steamless.Unpacker.Variant21.x86.Classes
         public uint SteamDRMPDllSize;
         public uint XTeaKeys; // Offset into the payload data where the XTEA key array begins.
 
-        // The 'StubData' field is dynamically sized based on the stub version and used options, so it
-        // cannot be marshalled with a fixed size; the caller slices the remainder of the header instead.
+        // StubData has no fixed size: it depends on the stub version and the options used, so the
+        // caller slices the rest of the header instead of marshalling it.
 
         uint ISteamStub32Var21Header.PayloadDataVirtualAddress => PayloadDataVirtualAddress;
         uint ISteamStub32Var21Header.PayloadDataSize => PayloadDataSize;

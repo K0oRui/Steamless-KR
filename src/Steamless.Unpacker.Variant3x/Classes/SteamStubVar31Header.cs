@@ -25,30 +25,35 @@
  * No warranties are given.
  */
 
-namespace Steamless.Unpacker.Variant30.x64.Classes
+namespace Steamless.Unpacker.Variant3x.Classes
 {
+    using Common;
     using System.Runtime.InteropServices;
 
+    /// <summary>
+    /// The SteamStub 3.1 header. The 32-bit and 64-bit stubs lay this struct out identically, so
+    /// one type covers both; the header is always 0xF0 bytes.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    public struct SteamStub64Var30Header
+    public struct SteamStubVar31Header
     {
         public uint XorKey;
-        public uint Signature; // 0xC0DEC0DE signature to validate this header is proper.
+        public uint Signature; // 0xC0DEC0DF signature; validates the xor decoding was successful.
         public ulong ImageBase;
-        public uint AddressOfEntryPoint;
+        public ulong AddressOfEntryPoint;
         public uint BindSectionOffset; // Offset relative to AddressOfEntryPoint, e.g. RVA(AddressOfEntryPoint - BindSectionOffset).
-        public uint Unknown0000; // [Cyanic: This field is most likely the .bind code size.]
-        public uint OriginalEntryPoint;
-        public uint Unknown0001; // [Cyanic: This field is most likely an offset to a string table.]
+        public uint Unknown0000; // [Cyanic] Likely the .bind code size.
+        public ulong OriginalEntryPoint;
+        public uint Unknown0001; // [Cyanic] Likely an offset to a string table.
         public uint PayloadSize;
         public uint DRMPDllOffset;
         public uint DRMPDllSize;
         public uint SteamAppId;
         public uint Flags;
         public uint BindSectionVirtualSize;
-        public uint Unknown0002; // [Cyanic: This field is most likely a hash of some sort.]
-        public uint CodeSectionVirtualAddress;
-        public uint CodeSectionRawSize;
+        public uint Unknown0002; // [Cyanic] Likely a hash of some sort.
+        public ulong CodeSectionVirtualAddress;
+        public ulong CodeSectionRawSize;
 
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 0x20)]
         public byte[] AES_Key;
@@ -62,19 +67,39 @@ namespace Steamless.Unpacker.Variant30.x64.Classes
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 0x04)]
         public uint[] EncryptionKeys; // XTEA keys used for decrypting the SteamDRMP.dll file.
 
-        public uint HasTlsCallback; // Flag that states if the file was protected with a TlsCallback present.
-        public uint Unknown0004;
-        public uint Unknown0005;
-        public uint Unknown0006;
-        public uint Unknown0007;
-        public uint Unknown0008;
-        public uint GetModuleHandleA_RVA;
-        public uint GetModuleHandleW_RVA;
-        public uint LoadLibraryA_RVA;
-        public uint LoadLibraryW_RVA;
-        public uint GetProcAddress_RVA;
-        public uint Unknown0009;
-        public uint Unknown0010;
-        public uint Unknown0011;
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 0x08)]
+        public uint[] Unknown0003;
+
+        public ulong GetModuleHandleA_Rva;
+        public ulong GetModuleHandleW_Rva;
+        public ulong LoadLibraryA_Rva;
+        public ulong LoadLibraryW_Rva;
+        public ulong GetProcAddress_Rva;
+
+        /// <summary>
+        /// Projects this layout into the width-independent shape the shared 3.x steps read. This
+        /// header has no TLS flag, so a repaired callback always applies.
+        /// </summary>
+        public Stub3xHeader ToStub3xHeader()
+        {
+            return new Stub3xHeader
+            {
+                Signature = this.Signature,
+                Flags = this.Flags,
+                OriginalEntryPoint = this.OriginalEntryPoint,
+                BindSectionOffset = this.BindSectionOffset,
+                PayloadSize = this.PayloadSize,
+                DRMPDllOffset = this.DRMPDllOffset,
+                DRMPDllSize = this.DRMPDllSize,
+                XorKey = this.XorKey,
+                CodeSectionVirtualAddress = this.CodeSectionVirtualAddress,
+                CodeSectionRawSize = this.CodeSectionRawSize,
+                AES_Key = this.AES_Key,
+                AES_IV = this.AES_IV,
+                CodeSectionStolenData = this.CodeSectionStolenData,
+                EncryptionKeys = this.EncryptionKeys,
+                HasTlsCallback = 1,
+            };
+        }
     }
 }

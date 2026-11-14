@@ -28,7 +28,7 @@
 namespace Steamless.Unpacker.Variant20.x86.Classes
 {
     /// <summary>
-    /// Common properties shared by all SteamStub 32-bit Variant 2.0 header sizes (856, 884, 952).
+    /// Common properties shared by the three 32-bit variant 2.0 header sizes: 856, 884 and 952.
     /// </summary>
     public interface ISteamStub32Var20Header
     {

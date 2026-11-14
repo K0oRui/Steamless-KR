@@ -30,7 +30,7 @@ namespace Steamless.Unpacker.Variant10.x86.Classes
     using System.Runtime.InteropServices;
 
     /// <summary>
-    /// SteamStub DRM Variant 1.0 Header
+    /// The SteamStub DRM variant 1.0 header.
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     public struct SteamStub32Var10Header

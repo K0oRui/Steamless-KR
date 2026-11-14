@@ -11,5 +11,8 @@
     <ProjectReference Include="..\Steamless.API\Steamless.API.csproj">
       <Private>false</Private>
     </ProjectReference>
+    <ProjectReference Include="..\Steamless.Unpacker.Common\Steamless.Unpacker.Common.csproj">
+      <Private>false</Private>
+    </ProjectReference>
   </ItemGroup>
 </Project>

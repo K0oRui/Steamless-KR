@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <ProjectGuid>{BCE3EBB5-5C6E-4E9A-A0EC-3FE43F3FFE48}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>Steamless.Unpacker.Variant3x</RootNamespace>
+    <AssemblyName>Steamless.Unpacker.Variant3x</AssemblyName>
+    <Description>Steamless SteamStub Variant v3.x Unpacker</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Steamless.API\Steamless.API.csproj">
+      <Private>false</Private>
+    </ProjectReference>
+    <ProjectReference Include="..\Steamless.Unpacker.Common\Steamless.Unpacker.Common.csproj">
+      <Private>false</Private>
+    </ProjectReference>
+  </ItemGroup>
+</Project>

@@ -25,14 +25,30 @@
  * No warranties are given.
  */
 
-namespace Steamless.Unpacker.Variant30.x64.Classes
+namespace Steamless.Unpacker.Common
 {
-    public enum SteamStubDrmFlags
+    using API.Events;
+    using API.Services;
+    using System;
+    using System.IO;
+
+    /// <summary>
+    /// Writes the optional stub artifacts next to the input. They exist for stub study, so a failed
+    /// write is reported and never fails the unpack.
+    /// </summary>
+    public static class StubDump
     {
-        NoModuleVerification = 0x02,
-        NoEncryption = 0x04,
-        NoOwnershipCheck = 0x10,
-        NoDebuggerCheck = 0x20,
-        NoErrorDialog = 0x40
+        public static void TryWrite(string path, byte[] data, string label, LoggingService logService)
+        {
+            try
+            {
+                File.WriteAllBytes(path, data);
+                logService.OnAddLogMessage(null, new LogMessageEventArgs($" --> {label} saved to disk.", LogMessageType.Debug));
+            }
+            catch (Exception ex)
+            {
+                logService.OnAddLogMessage(null, new LogMessageEventArgs($" --> Could not save {label}: {ex.Message}", LogMessageType.Warning));
+            }
+        }
     }
 }
