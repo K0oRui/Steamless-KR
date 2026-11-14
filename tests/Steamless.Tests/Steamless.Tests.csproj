@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <ProjectGuid>{142C3DC0-036D-453F-B387-40B98725A373}</ProjectGuid>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Steamless.Tests</RootNamespace>
+    <AssemblyName>Steamless.Tests</AssemblyName>
+    <Description>Checks the Steamless PE reader, writer and shared stub helpers without a game binary.</Description>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Steamless.API\Steamless.API.csproj" />
+    <ProjectReference Include="..\..\src\Steamless.Unpacker.Common\Steamless.Unpacker.Common.csproj" />
+  </ItemGroup>
+</Project>
