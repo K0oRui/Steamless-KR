@@ -19,10 +19,25 @@ jobs:
       - name: Set up .NET
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: "9.0.x"
+          dotnet-version: "10.0.x"
 
       - name: Check formatting
         run: dotnet format --verify-no-changes
+
+  test:
+    name: PE and stub checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Run the checks
+        run: dotnet run --project tests/Steamless.Tests -c Release
 
   analyze:
     name: CodeQL analysis
@@ -38,7 +53,7 @@ jobs:
       - name: Set up .NET
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: "9.0.x"
+          dotnet-version: "10.0.x"
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3

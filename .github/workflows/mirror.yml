@@ -1,0 +1,59 @@
+name: Mirror to Codeberg
+
+# Mirrors every branch and tag from GitHub to Codeberg.
+#
+# Requires:
+#   secrets.CODEBERG_TOKEN  Codeberg access token with write:repository scope
+#   vars.CODEBERG_USER      optional, defaults to K0oRui
+#   vars.CODEBERG_REPO      optional, defaults to Steamless-KR
+#
+# The Codeberg repository must already exist and accept pushes to its default
+# branch. Branch and tag deletions are propagated, and the nightly run repairs
+# any drift.
+
+on:
+  push:
+  delete:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mirror-codeberg
+  cancel-in-progress: true
+
+env:
+  CODEBERG_USER: ${{ vars.CODEBERG_USER || 'K0oRui' }}
+  CODEBERG_REPO: ${{ vars.CODEBERG_REPO || 'Steamless-KR' }}
+
+jobs:
+  mirror:
+    name: Mirror refs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Push branches and tags to Codeberg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CODEBERG_TOKEN: ${{ secrets.CODEBERG_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          MIRROR="$RUNNER_TEMP/mirror.git"
+          SOURCE="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          TARGET="https://${CODEBERG_USER}:${CODEBERG_TOKEN}@codeberg.org/${CODEBERG_USER}/${CODEBERG_REPO}.git"
+
+          git init --quiet --bare "$MIRROR"
+          git -C "$MIRROR" remote add source "$SOURCE"
+          git -C "$MIRROR" fetch --prune --quiet source \
+            '+refs/heads/*:refs/heads/*' \
+            '+refs/tags/*:refs/tags/*'
+
+          git -C "$MIRROR" push --prune --quiet "$TARGET" \
+            '+refs/heads/*:refs/heads/*' \
+            '+refs/tags/*:refs/tags/*'
+
+          COUNT=$(git -C "$MIRROR" for-each-ref refs/heads refs/tags | wc -l)
+          echo "Mirrored ${COUNT} refs to ${CODEBERG_USER}/${CODEBERG_REPO}"

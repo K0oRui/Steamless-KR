@@ -186,13 +186,17 @@ jobs:
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
   # ─────────────────────────────────────────────────────────────────────────────
-  # Windows — GUI + CLI + all plugins
+  # Windows — GUI + CLI + all plugins, once per architecture
   # ─────────────────────────────────────────────────────────────────────────────
   build-windows:
-    name: Build (Windows)
+    name: Build (Windows ${{ matrix.arch }})
     needs: bump-version
     if: inputs.build_windows
     runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x64, x86]
     steps:
       - uses: actions/checkout@v5
         with:
@@ -200,7 +204,7 @@ jobs:
 
       - uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: "9.0.x"
+          dotnet-version: "10.0.x"
 
       - uses: actions/cache@v5
         with:
@@ -213,62 +217,39 @@ jobs:
 
       - name: Build CLI + all plugin projects
         shell: bash
-        run: |
-          dotnet build src/Steamless.CLI -c Release --no-restore
-          for proj in Variant10.x86 Variant20.x86 Variant21.x86 Variant30.x86 Variant30.x64 Variant31.x86 Variant31.x64; do
-            echo "Building Steamless.Unpacker.$proj..."
-            dotnet build "src/Steamless.Unpacker.$proj" -c Release --no-restore
-          done
+        run: dotnet build src/Steamless.CLI -c Release -r win-${{ matrix.arch }} --self-contained false
 
-      - name: Build GUI
+      - name: Publish GUI (ReadyToRun)
         shell: bash
-        run: dotnet build src/Steamless/Steamless.csproj -c Release --no-restore
+        run: dotnet publish src/Steamless/Steamless.csproj -c Release -r win-${{ matrix.arch }} --self-contained false -p:PublishReadyToRun=true -o publish/gui
 
       - name: Stage artifacts
         shell: bash
         run: |
-          CLI_DIR="src/Steamless.CLI/bin/Release/net9.0"
-          GUI_DIR="src/Steamless/bin/Release/net9.0-windows"
+          CLI_DIR="src/Steamless.CLI/bin/Release/net10.0/win-${{ matrix.arch }}"
+          GUI_DIR="publish/gui"
           mkdir -p dist/Plugins
 
           echo "=== CLI output ==="
           ls -la "$CLI_DIR/" | head -20
-          cp "$CLI_DIR/"* dist/
+          cp -r "$CLI_DIR/"* dist/
+
+          echo "=== GUI output ==="
+          ls -la "$GUI_DIR/" | head -20
+          cp -r "$GUI_DIR/"* dist/
 
           if [ -f "dist/Steamless.API.dll" ]; then
             cp dist/Steamless.API.dll dist/Plugins/
           fi
 
-          echo "=== GUI output ==="
-          ls -la "$GUI_DIR/" | head -20
-          cp "$GUI_DIR/"* dist/
-          if [ -f "dist/Steamless.API.dll" ] && [ ! -f "dist/Plugins/Steamless.API.dll" ]; then
-            mv dist/Steamless.API.dll dist/Plugins/
-          fi
-
           echo "=== Plugin DLLs ==="
-          for proj in Variant10.x86 Variant20.x86 Variant21.x86 Variant30.x86 Variant30.x64 Variant31.x86 Variant31.x64; do
-            dll="src/Steamless.Unpacker.$proj/bin/Release/net9.0/Steamless.Unpacker.$proj.dll"
-            if [ -f "$dll" ]; then
-              cp "$dll" dist/Plugins/
-              echo "  Copied: $proj"
-            else
-              echo "  MISSING: $dll"
-            fi
-          done
-
-          echo "=== Iced ==="
-          ICED=$(find . -path '*/Release/net9.0/Iced.dll' -print -quit)
-          if [ -n "$ICED" ]; then
-            cp "$ICED" dist/Plugins/
-          else
-            echo "  Iced.dll not found"
-          fi
+          # The build stages every plugin into the CLI output; nothing to collect by hand.
+          ls -la dist/Plugins/
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v6
         with:
-          name: steamless-Windows
+          name: steamless-Windows-${{ matrix.arch }}
           path: dist/
           if-no-files-found: error
 
@@ -287,7 +268,7 @@ jobs:
 
       - uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: "9.0.x"
+          dotnet-version: "10.0.x"
 
       - uses: actions/cache@v5
         with:
@@ -296,34 +277,19 @@ jobs:
           restore-keys: nuget-${{ runner.os }}-
 
       - name: Restore
-        run: |
-          for proj in src/Steamless.CLI \
-            src/Steamless.Unpacker.Variant10.x86 \
-            src/Steamless.Unpacker.Variant20.x86 \
-            src/Steamless.Unpacker.Variant21.x86 \
-            src/Steamless.Unpacker.Variant30.x86 \
-            src/Steamless.Unpacker.Variant30.x64 \
-            src/Steamless.Unpacker.Variant31.x86 \
-            src/Steamless.Unpacker.Variant31.x64; do
-            dotnet restore "$proj"
-          done
+        run: dotnet restore src/Steamless.CLI
 
       - name: Build CLI + all plugin projects
-        run: |
-          dotnet build src/Steamless.CLI -c Release --no-restore
-          for proj in Variant10.x86 Variant20.x86 Variant21.x86 Variant30.x86 Variant30.x64 Variant31.x86 Variant31.x64; do
-            echo "Building Steamless.Unpacker.$proj..."
-            dotnet build "src/Steamless.Unpacker.$proj" -c Release --no-restore
-          done
+        run: dotnet build src/Steamless.CLI -c Release --no-restore
 
       - name: Stage artifacts
         run: |
-          CLI_DIR="src/Steamless.CLI/bin/Release/net9.0"
+          CLI_DIR="src/Steamless.CLI/bin/Release/net10.0"
           mkdir -p dist/Plugins
 
           echo "=== CLI output ==="
           ls -la "$CLI_DIR/" | head -20
-          cp "$CLI_DIR/"* dist/
+          cp -r "$CLI_DIR/"* dist/
           chmod +x dist/Steamless.CLI
 
           if [ -f "dist/Steamless.API.dll" ]; then
@@ -331,23 +297,8 @@ jobs:
           fi
 
           echo "=== Plugin DLLs ==="
-          for proj in Variant10.x86 Variant20.x86 Variant21.x86 Variant30.x86 Variant30.x64 Variant31.x86 Variant31.x64; do
-            dll="src/Steamless.Unpacker.$proj/bin/Release/net9.0/Steamless.Unpacker.$proj.dll"
-            if [ -f "$dll" ]; then
-              cp "$dll" dist/Plugins/
-              echo "  Copied: $proj"
-            else
-              echo "  MISSING: $dll"
-            fi
-          done
-
-          echo "=== Iced ==="
-          ICED=$(find . -path '*/Release/net9.0/Iced.dll' -print -quit)
-          if [ -n "$ICED" ]; then
-            cp "$ICED" dist/Plugins/
-          else
-            echo "  Iced.dll not found"
-          fi
+          # The build stages every plugin into the CLI output; nothing to collect by hand.
+          ls -la dist/Plugins/
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v6
@@ -387,9 +338,11 @@ jobs:
       - name: Package archives
         run: |
           VERSION="${{ needs.bump-version.outputs.version }}"
-          if [ -d "artifacts/steamless-Windows" ]; then
-            cd artifacts/steamless-Windows && zip -r "../../Steamless-${VERSION}-windows.zip" . && cd ../..
-          fi
+          for arch in x64 x86; do
+            dir="artifacts/steamless-Windows-${arch}"
+            [ -d "$dir" ] || continue
+            (cd "$dir" && zip -r "../../Steamless-${VERSION}-windows-${arch}.zip" .)
+          done
           if [ -d "artifacts/steamless-Linux" ]; then
             cd artifacts/steamless-Linux && tar czf "../../Steamless-${VERSION}-linux.tar.gz" . && cd ../..
           fi
@@ -402,6 +355,116 @@ jobs:
           name: Steamless ${{ needs.bump-version.outputs.version }}
           prerelease: ${{ inputs.prerelease == 'prerelease' }}
           body_path: release-notes/release-notes.md
+          # Globs, so a run that built only one platform does not fail on the archive it did not make.
           files: |
-            Steamless-${{ needs.bump-version.outputs.version }}-windows.zip
-            Steamless-${{ needs.bump-version.outputs.version }}-linux.tar.gz
+            Steamless-*-windows-*.zip
+            Steamless-*-linux.tar.gz
+
+      - name: Upload packaged archives
+        uses: actions/upload-artifact@v6
+        with:
+          name: release-archives
+          path: |
+            Steamless-*-windows-*.zip
+            Steamless-*-linux.tar.gz
+          if-no-files-found: error
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Codeberg release — syncs the refs, then mirrors the release and its assets
+  #
+  # Requires: secrets.CODEBERG_TOKEN (write:repository on Codeberg)
+  #           vars.CODEBERG_USER / vars.CODEBERG_REPO (optional)
+  # ─────────────────────────────────────────────────────────────────────────────
+  release-codeberg:
+    name: Release (Codeberg)
+    needs: [bump-version, release]
+    if: ${{ !inputs.build_only && needs.release.result == 'success' }}
+    runs-on: ubuntu-latest
+    env:
+      CODEBERG_USER: ${{ vars.CODEBERG_USER || 'K0oRui' }}
+      CODEBERG_REPO: ${{ vars.CODEBERG_REPO || 'Steamless-KR' }}
+    steps:
+      # The tag is created with GITHUB_TOKEN, so the mirror workflow is not
+      # triggered by it. Sync here before the release is created.
+      - name: Sync refs to Codeberg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CODEBERG_TOKEN: ${{ secrets.CODEBERG_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          MIRROR="$RUNNER_TEMP/mirror.git"
+          SOURCE="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          TARGET="https://${CODEBERG_USER}:${CODEBERG_TOKEN}@codeberg.org/${CODEBERG_USER}/${CODEBERG_REPO}.git"
+
+          git init --quiet --bare "$MIRROR"
+          git -C "$MIRROR" remote add source "$SOURCE"
+          git -C "$MIRROR" fetch --prune --quiet source \
+            '+refs/heads/*:refs/heads/*' \
+            '+refs/tags/*:refs/tags/*'
+
+          git -C "$MIRROR" push --prune --quiet "$TARGET" \
+            '+refs/heads/*:refs/heads/*' \
+            '+refs/tags/*:refs/tags/*'
+
+      - name: Download release notes
+        uses: actions/download-artifact@v7
+        with:
+          name: release-notes
+          path: release-notes
+
+      - name: Download packaged archives
+        uses: actions/download-artifact@v7
+        with:
+          name: release-archives
+          path: archives
+
+      - name: Create release and upload assets
+        env:
+          CODEBERG_TOKEN: ${{ secrets.CODEBERG_TOKEN }}
+          VERSION: ${{ needs.bump-version.outputs.version }}
+          COMMIT_SHA: ${{ needs.bump-version.outputs.commit-sha }}
+          PRERELEASE: ${{ inputs.prerelease == 'prerelease' }}
+        run: |
+          set -euo pipefail
+
+          API="https://codeberg.org/api/v1/repos/${CODEBERG_USER}/${CODEBERG_REPO}"
+          AUTH="Authorization: token ${CODEBERG_TOKEN}"
+
+          # A re-run replaces the release that the previous attempt created.
+          EXISTING=$(curl --silent --show-error -H "$AUTH" "$API/releases/tags/${VERSION}" | jq -r '.id // empty')
+          if [ -n "$EXISTING" ]; then
+            echo "Deleting existing release ${EXISTING}"
+            curl --silent --show-error -X DELETE -H "$AUTH" "$API/releases/${EXISTING}"
+          fi
+
+          jq -n \
+            --arg tag "$VERSION" \
+            --arg sha "$COMMIT_SHA" \
+            --arg name "Steamless $VERSION" \
+            --arg body "$(cat release-notes/release-notes.md)" \
+            --argjson prerelease "$PRERELEASE" \
+            '{tag_name: $tag, target_commitish: $sha, name: $name, body: $body, draft: false, prerelease: $prerelease}' \
+            > payload.json
+
+          RESPONSE=$(curl --silent --show-error -X POST \
+            -H "$AUTH" -H "Content-Type: application/json" \
+            --data @payload.json "$API/releases")
+
+          RELEASE_ID=$(jq -r '.id // empty' <<< "$RESPONSE" 2>/dev/null || true)
+          if [ -z "$RELEASE_ID" ]; then
+            echo "Error: Codeberg release creation failed"
+            echo "$RESPONSE"
+            exit 1
+          fi
+
+          for asset in archives/*; do
+            name=$(basename "$asset")
+            echo "Uploading ${name}"
+            curl --silent --show-error --fail -X POST -H "$AUTH" \
+              -H "Content-Type: application/octet-stream" \
+              --data-binary @"$asset" \
+              "$API/releases/${RELEASE_ID}/assets?name=${name}"
+          done
+
+          echo "Published ${VERSION} on Codeberg"
