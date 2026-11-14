@@ -46,8 +46,12 @@
     Binaries the app never loads. ANGLE is dead because the renderer is software
     only; DesignerSupport and Remote.Protocol serve the XAML previewer and the
     dev tools. Avalonia.Metal stays: without it the window paints black.
+
+    Composite ReadyToRun bakes references to DesignerSupport into the image, so
+    those files have to stay for that publish.
   -->
-  <Target Name="DropUnusedAvaloniaBinaries" AfterTargets="Publish" Condition="'$(PublishDir)' != ''">
+  <Target Name="DropUnusedAvaloniaBinaries" AfterTargets="Publish"
+          Condition="'$(PublishDir)' != '' and '$(PublishReadyToRunComposite)' != 'true'">
     <ItemGroup>
       <_UnusedAvaloniaBinary Include="$(PublishDir)av_libglesv2.dll" />
       <_UnusedAvaloniaBinary Include="$(PublishDir)Avalonia.DesignerSupport.dll" />

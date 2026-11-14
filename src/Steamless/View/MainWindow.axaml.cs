@@ -45,19 +45,26 @@ namespace Steamless.View
             App.ViewModel.PropertyChanged += this.OnViewModelPropertyChanged;
 
             this.UpdateWindowStateVisuals();
+            this.Opened += this.OnWindowOpened;
+
+            // A fast start can reach the main state before this window subscribes.
+            if (App.ViewModel.ShowMainView)
+                this.CreateMainView();
+        }
+
+        private void OnWindowOpened(object? sender, EventArgs e)
+        {
+            // Build behind the splash, after the first frame, instead of during its fade.
+            Dispatcher.UIThread.Post(this.CreateMainView, DispatcherPriority.Background);
         }
 
         /// <summary>
-        /// The main view is built once the splash ends. Building it at startup made the first
+        /// The main view is built once the splash is up. Building it at startup made the first
         /// window wait for a full visual tree that the splash was covering anyway.
         /// </summary>
         private void CreateMainView()
         {
-            var host = this.FindControl<ContentControl>("MainHost");
-            if (host == null)
-                return;
-
-            host.Content ??= new MainView();
+            this.MainHost.Content ??= new MainView();
         }
 
         /// <summary>
@@ -66,13 +73,6 @@ namespace Steamless.View
         /// </summary>
         private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == nameof(MainWindowViewModel.ShowMainView))
-            {
-                if (App.ViewModel.ShowMainView)
-                    this.CreateMainView();
-                return;
-            }
-
             if (e.PropertyName == nameof(MainWindowViewModel.ShowSplashView))
             {
                 if (!App.ViewModel.ShowSplashView)
