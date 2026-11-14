@@ -1,5 +1,7 @@
-# Auto-detect text files and normalize to LF
-* text=auto
+# Auto-detect text files, store LF and check out LF everywhere. Without eol=lf
+# a Windows checkout with core.autocrlf=true would hand back CRLF and every
+# formatter run would disagree with CI.
+* text=auto eol=lf
 
 # Source code
 *.cs text diff=csharp

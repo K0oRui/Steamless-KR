@@ -1,8 +1,23 @@
 <Project>
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
     <PlatformTarget>AnyCPU</PlatformTarget>
+
+    <!--
+      Run the code style and naming analyzers during the build. The Lint job
+      still runs dotnet format, but this turns a violation into a build warning
+      locally, before it reaches CI.
+    -->
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
   </PropertyGroup>
+
+  <!--
+    Every unpacker project, discovered rather than listed. The hosts reference this
+    item for build order, so adding a variant needs no host or solution edit.
+  -->
+  <ItemGroup>
+    <UnpackerProject Include="$(MSBuildThisFileDirectory)src\Steamless.Unpacker.*\Steamless.Unpacker.*.csproj" />
+  </ItemGroup>
 </Project>

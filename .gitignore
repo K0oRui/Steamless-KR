@@ -137,7 +137,7 @@ publish/
 # Publish Web Output
 *.[Pp]ublish.xml
 *.azurePubxml
-# TODO: Comment the next line if you want to checkin your web deploy settings 
+# TODO: Comment the next line if you want to checkin your web deploy settings
 # but database connection strings (with potential passwords) will be unencrypted
 *.pubxml
 *.publishproj
@@ -158,8 +158,14 @@ csx/
 # Windows Store app package directory
 AppPackages/
 
-# Test executables (large binaries, not source)
-tests/
+# Test corpus and reports (large binaries, not source)
+tests/*
+# ...except the dependency-free test project, which is source.
+!tests/Steamless.Tests/
+!tests/Steamless.Tests/**
+# Its build output is still output.
+tests/Steamless.Tests/bin/
+tests/Steamless.Tests/obj/
 
 # Others
 *.[Cc]ache

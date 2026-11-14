@@ -3,6 +3,7 @@ root = true
 [*]
 indent_style = space
 indent_size = 4
+end_of_line = lf
 insert_final_newline = true
 trim_trailing_whitespace = true
 
@@ -17,13 +18,58 @@ indent_size = 2
 trim_trailing_whitespace = false
 
 [*.cs]
-# Naming conventions
-dotnet_naming_rule.private_fields_rule.imported = true
-dotnet_naming_rule.private_fields_rule.symbols = private_fields
-dotnet_naming_rule.private_fields_rule.style = prefix_m_
+# Naming conventions.
+#
+# Roslyn picks the most specific matching rule, so the const and static rules
+# below win over the plain private-field rule. Without them the instance rule
+# would claim every private field and demand an m_ prefix on constants and
+# statics that never use one.
+#
+#   private const int MaxLogEntries            -> PascalCase
+#   private static readonly byte[] ZeroPad     -> PascalCase
+#   private static bool s_ResolverAttached     -> s_PascalCase
+#   private string m_StatusText                -> m_PascalCase
+#
+# The severity on each rule is only honoured by the IDE and by dotnet format.
+# The compiler ignores it, so IDE1006 needs its own line below to fail a build.
 
-dotnet_naming_symbols.private_fields.applicable_kinds = field
-dotnet_naming_symbols.private_fields.applicable_accessibilities = private
+dotnet_diagnostic.IDE1006.severity = warning
+
+dotnet_naming_rule.private_constants.symbols = private_constants
+dotnet_naming_rule.private_constants.style = pascal_case
+dotnet_naming_rule.private_constants.severity = warning
+
+dotnet_naming_rule.private_static_readonly_fields.symbols = private_static_readonly_fields
+dotnet_naming_rule.private_static_readonly_fields.style = pascal_case
+dotnet_naming_rule.private_static_readonly_fields.severity = warning
+
+dotnet_naming_rule.private_static_fields.symbols = private_static_fields
+dotnet_naming_rule.private_static_fields.style = prefix_s_
+dotnet_naming_rule.private_static_fields.severity = warning
+
+dotnet_naming_rule.private_instance_fields.symbols = private_instance_fields
+dotnet_naming_rule.private_instance_fields.style = prefix_m_
+dotnet_naming_rule.private_instance_fields.severity = warning
+
+dotnet_naming_symbols.private_constants.applicable_kinds = field
+dotnet_naming_symbols.private_constants.applicable_accessibilities = private
+dotnet_naming_symbols.private_constants.required_modifiers = const
+
+dotnet_naming_symbols.private_static_readonly_fields.applicable_kinds = field
+dotnet_naming_symbols.private_static_readonly_fields.applicable_accessibilities = private
+dotnet_naming_symbols.private_static_readonly_fields.required_modifiers = static, readonly
+
+dotnet_naming_symbols.private_static_fields.applicable_kinds = field
+dotnet_naming_symbols.private_static_fields.applicable_accessibilities = private
+dotnet_naming_symbols.private_static_fields.required_modifiers = static
+
+dotnet_naming_symbols.private_instance_fields.applicable_kinds = field
+dotnet_naming_symbols.private_instance_fields.applicable_accessibilities = private
+
+dotnet_naming_style.pascal_case.capitalization = pascal_case
+
+dotnet_naming_style.prefix_s_.required_prefix = s_
+dotnet_naming_style.prefix_s_.capitalization = pascal_case
 
 dotnet_naming_style.prefix_m_.required_prefix = m_
-dotnet_naming_style.prefix_m_.capitalization = camel_case
+dotnet_naming_style.prefix_m_.capitalization = pascal_case

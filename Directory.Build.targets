@@ -1,0 +1,42 @@
+<Project>
+  <!--
+    Stage the unpacker plugins next to the GUI and CLI so a plain solution build
+    produces a runnable app. The CI release workflow stages the same files into
+    the release archive.
+  -->
+  <Target Name="StageSteamlessPlugins" AfterTargets="Build"
+          Condition="'$(MSBuildProjectName)' == 'Steamless' or '$(MSBuildProjectName)' == 'Steamless.CLI'">
+
+    <!--
+      Clear the folder first: a plugin that was renamed or removed must not linger,
+      because the host loads every DLL it finds there.
+    -->
+    <RemoveDir Directories="$(OutDir)Plugins" />
+
+    <ItemGroup>
+      <_SteamlessPlugin Include="$(MSBuildThisFileDirectory)src/Steamless.Unpacker.*/bin/$(Configuration)/$(TargetFramework)/Steamless.Unpacker.*.dll" />
+      <_SteamlessPlugin Include="$(MSBuildThisFileDirectory)src/Steamless.API/bin/$(Configuration)/$(TargetFramework)/Steamless.API.dll"
+                        Condition="Exists('$(MSBuildThisFileDirectory)src/Steamless.API/bin/$(Configuration)/$(TargetFramework)/Steamless.API.dll')" />
+      <_SteamlessPlugin Include="$(MSBuildThisFileDirectory)src/Steamless.Unpacker.Common/bin/$(Configuration)/$(TargetFramework)/Iced.dll"
+                        Condition="Exists('$(MSBuildThisFileDirectory)src/Steamless.Unpacker.Common/bin/$(Configuration)/$(TargetFramework)/Iced.dll')" />
+    </ItemGroup>
+
+    <!-- An empty Plugins folder ships an app that cannot unpack anything; fail the build instead. -->
+    <Error Condition="'@(_SteamlessPlugin->Count())' == '0'"
+           Text="No unpacker plugins were staged into $(OutDir)Plugins. Build the unpacker projects first." />
+
+    <Copy SourceFiles="@(_SteamlessPlugin)" DestinationFolder="$(OutDir)Plugins" SkipUnchangedFiles="true" />
+  </Target>
+
+  <!--
+    Publish runs its own build, so the staging above lands in the RID output. Copy the
+    same files into the publish folder, otherwise a published app has no plugins.
+  -->
+  <Target Name="StageSteamlessPluginsForPublish" AfterTargets="Publish"
+          Condition="'$(MSBuildProjectName)' == 'Steamless' and '$(PublishDir)' != ''">
+    <ItemGroup>
+      <_SteamlessPublishedPlugin Include="$(OutDir)Plugins/*.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_SteamlessPublishedPlugin)" DestinationFolder="$(PublishDir)Plugins" SkipUnchangedFiles="true" />
+  </Target>
+</Project>
