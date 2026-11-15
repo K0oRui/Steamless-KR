@@ -34,7 +34,7 @@ namespace Steamless.Unpacker.Variant10.x86
     using Common;
     using System;
 
-    [SteamlessApiVersion(1, 2)]
+    [SteamlessApiVersion(2, 0)]
     public class Main : StubUnpacker<UnpackRun>
     {
         private const string StubPrologue = "60 81 EC 00 10 00 00 BE ?? ?? ?? ?? B9 6A";

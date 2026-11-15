@@ -34,7 +34,7 @@ namespace ExamplePlugin
     using Steamless.API.Services;
     using System;
 
-    [SteamlessApiVersion(1, 2)]
+    [SteamlessApiVersion(2, 0)]
     public class Main : SteamlessPlugin
     {
         public override string Author => "Steamless Development Team";

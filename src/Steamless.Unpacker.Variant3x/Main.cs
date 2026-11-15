@@ -41,7 +41,7 @@ namespace Steamless.Unpacker.Variant3x
     /// layout. The declared size picks the layout, and the shared 3.x steps read one normalised
     /// header either way.
     /// </summary>
-    [SteamlessApiVersion(1, 2)]
+    [SteamlessApiVersion(2, 0)]
     public class Main : Stub3xUnpacker
     {
         private const uint HeaderSize30B0 = 0xB0;

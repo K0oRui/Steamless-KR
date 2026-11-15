@@ -35,7 +35,7 @@ namespace Steamless.Unpacker.Variant21.x86
     using System;
     using System.Collections.Generic;
 
-    [SteamlessApiVersion(1, 2)]
+    [SteamlessApiVersion(2, 0)]
     public class Main : StubUnpacker<V21Run>
     {
         private const string StubPrologue = "53 51 52 56 57 55 8B EC 81 EC 00 10 00 00 C7";
